@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs'
 import { type AppType } from "next/app";
 import { Geist } from "next/font/google";
 
@@ -11,10 +12,10 @@ const geist = Geist({
 
 const MyApp: AppType = ({ Component, pageProps }) => {
   return (
-    <div className={geist.className}>
+    <ClerkProvider>
       <Component {...pageProps} />
-    </div>
-  );
+    </ClerkProvider>
+  )
 };
 
 export default api.withTRPC(MyApp);
