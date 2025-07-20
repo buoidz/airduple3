@@ -12,66 +12,109 @@ datasource db {
 
 
 model User {
-  id          String   @id @default(uuid()) // Clerk user ID
+  id          String   @id  // Clerk user ID
   email       String   @unique
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  
   workspaces  Workspace[] // Users can own multiple workspaces
   tables      Table[]     // Users can own multiple tables directly
-  records     Record[]    // Records created by the user
-  views       View[]      // Views created by the user
 }
 
 model Workspace {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   name        String
+
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
   ownerId     String
+
   owner       User     @relation(fields: [ownerId], references: [id])
   tables      Table[]
+  
   @@index([ownerId])
 }
 
 model Table {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
   name        String
-  columns     Json     // JSON array of column definitions (name, type, etc.)
+
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  records     Record[]
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  columns     Column[]     
+  rows        Row[]
   views       View[]
+
   @@index([workspaceId])
   @@index([userId])
 }
 
-model Record {
-  id          String   @id @default(uuid())
+model Column {
+  id          String   @id @default(cuid())
   tableId     String
-  table       Table    @relation(fields: [tableId], references: [id])
-  data        Json     // JSONB for flexible, schema-less row data
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdById String?
-  createdBy   User?    @relation(fields: [createdById], references: [id])
-  @@index([tableId])
-  @@index([data], type: Gin) // GIN index for efficient JSONB queries
+  type        ColumnType @default(TEXT)
+  name        String  
+  order       Int
+
+  table       Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  cells       Cell[]
+
+  @@unique([tableId, name])
+  @@index([tableId, order])
+  @@index([tableId, type])
+  @@map("columns")
 }
 
+enum ColumnType {
+  TEXT
+  NUMBER
+}
+
+model Row {
+  id          String   @id @default(cuid())
+  tableId     String
+  order       Int
+  cells       Cell[]
+
+  table       Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([tableId])                    // Basic table queries
+  @@index([tableId, order])             // Ordered record listing
+
+}
+
+model Cell {
+  id        String   @id @default(cuid())
+  rowId     String
+  columnId  String
+
+  textValue     String?
+  numberValue   Float?
+
+  row       Row      @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@unique([rowId, columnId])  
+  @@index([columnId, textValue])        // Text filtering/search
+  @@index([columnId, numberValue])      // Number filtering (>, <, =)
+}
+
+
 model View {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   tableId     String
   table       Table    @relation(fields: [tableId], references: [id])
   name        String
+  type        ViewType @default(GRID)
   config      Json     // JSON for view settings (filters, sort, visible columns)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdById String?
-  createdBy   User?    @relation(fields: [createdById], references: [id])
-  isPublic    Boolean  @default(false)
+
   @@index([tableId])
+}
+
+enum ViewType {
+  GRID
+  KANBAN
 }

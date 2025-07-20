@@ -21,21 +21,22 @@ export const workspaceRouter = createTRPCRouter({
       });
     }),
   
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    const workspaces = await ctx.db.workspace.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        tables: true,
-      },
-    });
-    console.log("Fetched workspaces:", workspaces); // add this
+  getAll: privateProcedure
+    .query(async ({ ctx }) => {
+      const workspaces = await ctx.db.workspace.findMany({
+        orderBy: { createdAt: "desc" },
+        include: {
+          tables: true,
+        },
+      });
+      console.log("Fetched workspaces:", workspaces); // add this
 
-    return workspaces;
-  }),
+      return workspaces;
+    }),
 
   createTableDefault: privateProcedure
     .input(
-      z.object({ 
+      z.object({
         workspaceId: z.string(),
         name: z.string(),
       })
@@ -55,19 +56,26 @@ export const workspaceRouter = createTRPCRouter({
         });
       }
 
-    const defaultColumns = [
-      { name: 'Name', type: 'string' },
-      { name: 'Note', type: 'string' },
-    ];
-
-    const table = await ctx.db.table.create({
-      data: {
-        workspaceId: input.workspaceId,
-        userId: currentUser, // Associate table with the user
-        name: input.name,
-        columns: defaultColumns, // JSON array for column definitions
-      },
-    });
-
+      const table = await ctx.db.table.create({
+        data: {
+          workspaceId: input.workspaceId,
+          userId: currentUser,
+          name: input.name,
+          columns: {
+            create: [
+              {
+                name: 'Name',
+                type: 'TEXT', 
+                order: 0,
+              },
+              {
+                name: 'Note', 
+                type: 'TEXT', 
+                order: 1,
+              },
+            ],
+          },
+        },
+      });
     }),
 });
