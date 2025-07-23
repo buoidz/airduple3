@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@chakra-ui/react": "^3.22.0",
     "@clerk/nextjs": "^6.25.4",
     "@headlessui/react": "^2.2.4",
     "@prisma/client": "^6.5.0",

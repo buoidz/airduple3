@@ -1,3 +1,4 @@
+import { ColumnType } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -42,40 +43,54 @@ export const workspaceRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const currentUser = ctx.currentUser.id;
+      const { workspaceId, name } = input;
+      const userId = ctx.currentUser.id;
 
-      const workspace = await ctx.db.workspace.findUnique({
-        where: { id: input.workspaceId },
-        select: { id: true, ownerId: true },
-      });
+      // 1. Create the Table
+      const table = await ctx.db.$transaction(async (tx) => {
 
-      if (!workspace) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Workspace not found',
+        const newTable = await ctx.db.table.create({
+          data: {
+            name: name,
+            workspaceId,
+            userId
+          }
         });
-      }
 
-      const table = await ctx.db.table.create({
-        data: {
-          workspaceId: input.workspaceId,
-          userId: currentUser,
-          name: input.name,
-          columns: {
-            create: [
-              {
-                name: 'Name',
-                type: 'TEXT', 
-                order: 0,
-              },
-              {
-                name: 'Note', 
-                type: 'TEXT', 
-                order: 1,
-              },
-            ],
-          },
-        },
+        // 2. Create two columns: name & note
+        const columns = await ctx.db.column.createMany({
+          data: [
+            { tableId: newTable.id, name: "name", type: ColumnType.TEXT, order: 0 },
+            { tableId: newTable.id, name: "note", type: ColumnType.TEXT, order: 1 }
+          ]
+        });
+
+        // 3. Fetch column IDs to use in cells
+        const createdColumns = await ctx.db.column.findMany({
+          where: { tableId: newTable.id },
+          select: { id: true }
+        });
+
+        // 4. Create 3 rows and corresponding empty cells
+        for (let i = 0; i < 3; i++) {
+          const row = await ctx.db.row.create({
+            data: {
+              tableId: newTable.id,
+              order: i
+            }
+          });
+
+          await ctx.db.cell.createMany({
+            data: createdColumns.map(col => ({
+              rowId: row.id,
+              columnId: col.id,
+              textValue: ""
+            }))
+          });
+        }
+      
       });
-    }),
+
+      return table;
+    })
 });

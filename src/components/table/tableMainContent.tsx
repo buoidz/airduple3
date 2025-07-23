@@ -1,8 +1,10 @@
 import { useParams } from "next/navigation";
-import { flexRender, getCoreRowModel, useReactTable, type CellContext } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type CellContext, type ColumnFiltersState, type SortingState } from "@tanstack/react-table";
 import { useMemo, useState, useEffect } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { api } from "~/utils/api";
+import Filter from "./filter";
+import TableTopBar from "./tableTopBar";
 
 
 type EditableCellProps = {
@@ -51,9 +53,8 @@ export function TableMainContent() {
   const params = useParams();
   const tableId = params?.tableId as string;
 
-  const [newColName, setNewColName] = useState("");
-  const [newColType, setNewColType] = useState<"text" | "number">("text");
-
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sortBy, setSortBy] = useState<SortingState>([]);
 
   const { data: table, isLoading } = api.table.getById.useQuery({ tableId: tableId });
 
@@ -63,6 +64,12 @@ export function TableMainContent() {
       utils.table.getById.invalidate({ tableId: tableId });
     },
   });
+
+  // const addRows = api.table.addRows.useMutation({
+  //   onSuccess: () => {
+  //     utils.table.getById.invalidate({ tableId });
+  //   },
+  // });
 
   const columns = useMemo(() => 
     table?.columns.sort((a, b) => a.order - b.order) ?? [], 
@@ -99,7 +106,7 @@ export function TableMainContent() {
     rows.map((row) => {
       const rowObj: Record<string, any> = {};
       for (const cell of row.cells) {
-        rowObj[cell.columnId] = cell.value;
+        rowObj[cell.columnId] = cell.textValue ?? cell.numberValue ?? null;
       }
       return rowObj;
     }), 
@@ -109,27 +116,39 @@ export function TableMainContent() {
   const tableInstance = useReactTable({
     data: rowData,
     columns: columnDefs,
+    state: {
+      columnFilters,
+      sorting: sortBy,
+    },
+    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSortBy,
     getCoreRowModel: getCoreRowModel(),
-    columnResizeMode: "onChange",
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    columnResizeMode: 'onChange',
   });
 
   if (isLoading) return <div>Loading table...</div>;
   if (!table) return <div>Table not found</div>;
 
-  
 
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <button
+      <div className="w-full overflow-x-auto">
+        {/* <button
           // onClick={handleAddRows}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Add 15,000 Rows
-        </button>
-
-        <table className="min-w-full text-left text-sm text-gray-600 font-normal leading-tight border-collapse">
+        </button> */}
+        <TableTopBar
+          columns={columns.map((col) => ({ key: col.id, label: col.name }))}
+          setColumnFilters={setColumnFilters}
+          setSorting={setSortBy}
+          sorting={tableInstance.getState().sorting}
+        />
+        <table className="text-left text-sm text-gray-600 font-normal leading-tight border-collapse">
           <thead>
             {tableInstance.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -164,21 +183,21 @@ export function TableMainContent() {
                         <MenuItem>
                           <button
                             onClick={() =>
-                              addColumn.mutate({ tableId, name: "Text", type: "text" })
+                              addColumn.mutate({ tableId, name: "Text", type: "TEXT" })
                             }
                             className="text-left px-2 py-1 rounded hover:bg-gray-100"
                           >
-                            Single line text
+                            Text
                           </button>
                         </MenuItem>
                         <MenuItem>
                           <button
                             onClick={() =>
-                              addColumn.mutate({ tableId, name: "Number", type: "number" })
+                              addColumn.mutate({ tableId, name: "Number", type: "NUMBER" })
                             }
                             className="text-left px-2 py-1 rounded hover:bg-gray-100"
                           >
-                            Attachment
+                            Number
                           </button>
                         </MenuItem>
                       </div>
