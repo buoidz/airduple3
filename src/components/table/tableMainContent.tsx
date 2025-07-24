@@ -143,7 +143,7 @@ export function TableMainContent() {
           Add 15,000 Rows
         </button> */}
         <TableTopBar
-          columns={columns.map((col) => ({ key: col.id, label: col.name }))}
+          columns={columns.map((col) => ({ key: col.id, label: col.name, type: col.type }))}
           setColumnFilters={setColumnFilters}
           setSorting={setSortBy}
           sorting={tableInstance.getState().sorting}
