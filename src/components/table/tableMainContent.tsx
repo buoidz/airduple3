@@ -145,6 +145,7 @@ export function TableMainContent() {
         <TableTopBar
           columns={columns.map((col) => ({ key: col.id, label: col.name, type: col.type }))}
           setColumnFilters={setColumnFilters}
+          columnFilters={columnFilters}
           setSorting={setSortBy}
           sorting={tableInstance.getState().sorting}
         />
