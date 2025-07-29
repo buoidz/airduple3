@@ -209,36 +209,55 @@ const FilterMenu = ({ columns, setColumnFilters, columnFilters }: FilterMenuProp
     setColumnFilters(columnFilters.filter((_, i) => i !== index));
   };
 
+  const filteredColumnNames = columnFilters
+    .map((filter) => columns.find((col) => col.key === filter.id)?.label)
+    .filter((name): name is string => !!name)
+    .join(', ');
+
   return (
-    <MenuWrapper label="Filter" icon={<ListFilter className="h-4 w-4" />} className="w-110">
-      <div className="p-2 text-sm font-semibold text-gray-500">Filter by</div>
-      <div className="border-b border-gray-200 my-1 mb-2 mx-1" />
-      {mappedFilters.length === 0 ? (
-        <MenuItem>
-          <div className="px-4 py-2 text-sm text-gray-500">No filters applied.</div>
-        </MenuItem>
-      ) : (
-        mappedFilters.map((filter, index) => (
-          <FilterItem
-            key={index}
-            index={index}
-            filter={filter}
-            columns={columns}
-            updateFilter={updateFilter}
-            removeFilter={removeFilter}
-          />
-        ))
-      )}
-      <div className="px-2 py-2">
-        <button
-          onClick={addFilter}
-          className="flex items-center text-sm text-gray-400 hover:text-gray-800"
-          disabled={mappedFilters.length >= columns.length}
-        >
+    <Menu as="div" className="relative">
+      <MenuButton
+        className={`flex items-center rounded-sm px-2 py-1.5 text-sm focus:outline-none ${
+          columnFilters.length > 0 ? 'bg-green-200 hover:border-gray-300' : 'text-gray-800 hover:bg-gray-100'
+        }`}
+      >
+        <ListFilter className="h-4 w-4 mr-1" />
+        {columnFilters.length > 0 ? (
+          <span>Filtered by {filteredColumnNames || 'columns'}</span>
+        ) : (
+          <span>Filter</span>
+        )}
+      </MenuButton>
+      <MenuItems className="absolute right-0 my-1 z-10 w-110 rounded-md border border-gray-200 shadow-lg bg-white p-2 focus:outline-none">
+        <div className="p-2 text-sm font-semibold text-gray-500">Filter by</div>
+        <div className="border-b border-gray-200 my-1 mb-2 mx-1" />
+        {mappedFilters.length === 0 ? (
+          <MenuItem>
+            <div className="px-4 py-2 text-sm text-gray-500">No filters applied.</div>
+          </MenuItem>
+        ) : (
+          mappedFilters.map((filter, index) => (
+            <FilterItem
+              key={index}
+              index={index}
+              filter={filter}
+              columns={columns}
+              updateFilter={updateFilter}
+              removeFilter={removeFilter}
+            />
+          ))
+        )}
+        <div className="px-2 py-2">
+          <button
+            onClick={addFilter}
+            className="flex items-center text-sm text-gray-400 hover:text-gray-800"
+            disabled={mappedFilters.length >= columns.length}
+          >
           <PlusIcon className="h-4 w-4 mr-1" /> Add filter
-        </button>
-      </div>
-    </MenuWrapper>
+          </button>
+        </div>
+      </MenuItems>
+    </Menu>
   );
 };
 
