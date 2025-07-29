@@ -2,6 +2,7 @@ import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/react';
 import { ArrowDownUp, ChevronDownIcon, EyeOff, List, ListFilter, PaintBucket, ExternalLink, Search, XIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { ColumnFiltersState, ColumnSort, SortingState } from '@tanstack/react-table';
+import { api } from '~/utils/api';
 
 // Interfaces for type safety
 interface Column {
@@ -16,59 +17,16 @@ interface TableTopBarProps {
   columnFilters: ColumnFiltersState; // Added to manage filter state
   setSorting: (sorting: SortingState) => void;
   sorting: SortingState;
+  tableId: string;
 }
 
-type FilterType =
-  | 'textEquals'
-  | 'textNotEquals'
-  | 'contains'
-  | 'notContains' // For TEXT
-  | 'numberEquals'
-  | 'numberNotEquals'
-  | 'greaterThan'
-  | 'lessThan'; // For NUMBER
+type FilterType = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan';
 
 interface Filter {
   id: string;
   type: FilterType;
   value: string;
 }
-
-// Custom filter functions for TanStack Table
-const filterFunctions: Record<FilterType, (row: any, columnId: string, filterValue: { value: string; type: FilterType }) => boolean> = {
-  textEquals: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? String(value).toLowerCase() === filterValue.value.toLowerCase() : false;
-  },
-  textNotEquals: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? String(value).toLowerCase() !== filterValue.value.toLowerCase() : false;
-  },
-  contains: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? String(value).toLowerCase().includes(filterValue.value.toLowerCase()) : false;
-  },
-  notContains: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? !String(value).toLowerCase().includes(filterValue.value.toLowerCase()) : false;
-  },
-  numberEquals: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? Number(value) === Number(filterValue.value) : false;
-  },
-  numberNotEquals: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? Number(value) !== Number(filterValue.value) : false;
-  },
-  greaterThan: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? Number(value) > Number(filterValue.value) : false;
-  },
-  lessThan: (row, columnId, filterValue) => {
-    const value = row.getValue(columnId);
-    return value !== undefined ? Number(value) < Number(filterValue.value) : false;
-  },
-};
 
 // Generic Menu Wrapper Component
 interface MenuWrapperProps {
@@ -91,39 +49,80 @@ const MenuWrapper = ({ label, icon, children, className }: MenuWrapperProps) => 
 );
 
 // Filter Item Component
+interface AddFakeRowMenuProps {
+  tableId: string;
+}
+
+const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
+  const utils = api.useUtils();
+  const addRowsMutation = api.table.addFakeRows.useMutation({
+    onSuccess: () => {
+      utils.table.getById.invalidate({ tableId });
+    },
+    onError: (error) => {
+      console.error('Error adding rows:', error);
+      alert('Failed to add rows. Please try again.');
+    },
+  });
+
+  const handleAddRows = () => {
+      addRowsMutation.mutate({
+        tableId,
+        rowCount: 15000,  // change back to 15k
+      });
+    };
+
+  return (
+    <button
+      onClick={handleAddRows}
+      className="flex items-center rounded-sm px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-100 focus:outline-none"
+      disabled={addRowsMutation.isPending}
+    >
+      <PlusIcon className="h-4 w-4 mr-1" />
+      {addRowsMutation.isPending ? 'Adding Rows...' : 'Add 15,000 Rows'}
+    </button>
+  );
+};
+
+
+// Filter Item Component
 interface FilterItemProps {
   filter: Filter;
   index: number;
   columns: Column[];
-  updateFilter: (index: number, field: 'id' | 'type' | 'value', value: string | FilterType) => void;
+  updateFilter: (index: number, updatedFilter: Filter) => void;
   removeFilter: (index: number) => void;
 }
 
 const FilterItem = ({ filter, index, columns, updateFilter, removeFilter }: FilterItemProps) => {
   const column = columns.find((col) => col.key === filter.id);
   const availableFilterTypes: FilterType[] = column?.type === 'TEXT'
-    ? ['textEquals', 'textNotEquals', 'contains', 'notContains']
-    : ['numberEquals', 'numberNotEquals', 'greaterThan', 'lessThan'];
+    ? ['equals', 'notEquals', 'contains', 'notContains']
+    : ['equals', 'notEquals', 'greaterThan', 'lessThan'];
 
-  const getFilterDisplayText = (type: FilterType, columnType: 'TEXT' | 'NUMBER' | undefined) => {
-    if (columnType === 'NUMBER') {
-      return type === 'numberEquals' ? 'Equals' :
-             type === 'numberNotEquals' ? 'Not equals' :
-             type === 'greaterThan' ? 'Greater than' :
-             'Less than';
-    }
-    return type === 'textEquals' ? 'Is' :
-           type === 'textNotEquals' ? 'Is not' :
-           type === 'contains' ? 'Contains' :
-           'Does not contain';
-  };
+  const getFilterDisplayText = (type: FilterType) => ({
+    equals: column?.type === 'TEXT' ? 'Is' : 'Equals',
+    notEquals: column?.type === 'TEXT' ? 'Is not' : 'Not equals',
+    contains: 'Contains',
+    notContains: 'Does not contain',
+    greaterThan: 'Greater than',
+    lessThan: 'Less than'
+  }[type]);
 
   return (
     <div className="flex items-center px-2 py-1 gap-2">
       <div className="w-full relative">
         <select
           value={filter.id}
-          onChange={(e) => updateFilter(index, 'id', e.target.value)}
+          onChange={(e) => {
+            const newColumn = columns.find(col => col.key === e.target.value);
+            updateFilter(index, {
+              ...filter,
+              id: e.target.value,
+              type: newColumn?.type === 'TEXT' ? 'contains' : 'equals',
+              value: ''
+            });
+          }}
           className="w-full rounded-xs border border-gray-300 px-2 py-1 text-sm appearance-none hover:bg-gray-100"
         >
           {columns.map((col) => (
@@ -139,12 +138,12 @@ const FilterItem = ({ filter, index, columns, updateFilter, removeFilter }: Filt
       <div className="w-full relative">
         <select
           value={filter.type}
-          onChange={(e) => updateFilter(index, 'type', e.target.value as FilterType)}
+          onChange={(e) => updateFilter(index, { ...filter, type: e.target.value as FilterType })}
           className="w-full rounded-xs border border-gray-300 px-2 py-1 text-sm appearance-none hover:bg-gray-100"
         >
           {availableFilterTypes.map((type) => (
             <option key={type} value={type}>
-              {getFilterDisplayText(type, column?.type)}
+              {getFilterDisplayText(type)}
             </option>
           ))}
         </select>
@@ -156,7 +155,7 @@ const FilterItem = ({ filter, index, columns, updateFilter, removeFilter }: Filt
         <input
           type={column?.type === 'NUMBER' ? 'number' : 'text'}
           value={filter.value}
-          onChange={(e) => updateFilter(index, 'value', e.target.value)}
+          onChange={(e) => updateFilter(index, { ...filter, value: e.target.value })}
           className="w-full rounded-xs border border-gray-300 px-2 py-1 text-sm"
           placeholder="Enter value"
         />
@@ -180,53 +179,46 @@ interface FilterMenuProps {
 }
 
 const FilterMenu = ({ columns, setColumnFilters, columnFilters }: FilterMenuProps) => {
-  const [localFilters, setLocalFilters] = useState<Filter[]>(
-    columnFilters.map((f: any) => ({
-      id: f.id || (columns[0]?.key || ''),
-      type: (f.type as FilterType) || 'equals',
-      value: f.value || '',
-    }))
-  );
+  const mappedFilters: Filter[] = columnFilters.map((f) => ({
+    id: f.id,
+    type: (f.value as { type: FilterType; value: string } | undefined)?.type || 
+          (columns.find(col => col.key === f.id)?.type === 'TEXT' ? 'contains' : 'equals'),
+    value: (f.value as { type: FilterType; value: string } | undefined)?.value || ''
+  }));
 
   const addFilter = () => {
-    const availableColumn = columns.find((col) => !localFilters.some((f) => f.id === col.key));
+    const availableColumn = columns.find((col) => !mappedFilters.some((f) => f.id === col.key));
     if (availableColumn) {
-      setLocalFilters([...localFilters, { id: availableColumn.key, type: availableColumn.type === 'TEXT' ? 'contains' : 'numberEquals', value: '' }]);
+      setColumnFilters([...columnFilters, {
+        id: availableColumn.key,
+        value: {
+          type: availableColumn.type === 'TEXT' ? 'contains' : 'equals',
+          value: ''
+        }
+      }]);
     }
   };
 
-  const updateFilter = (index: number, field: 'id' | 'type' | 'value', value: string | FilterType) => {
-    const newFilters = [...localFilters];
-    newFilters[index] = { ...newFilters[index], [field]: value };
-    setLocalFilters(newFilters);
-    
-    setColumnFilters(newFilters.map((f) => ({
-      id: f.id,
-      value: f.value,
-      type: f.type,
-    })));
+  const updateFilter = (index: number, updatedFilter: Filter) => {
+    const newFilters = [...columnFilters];
+    newFilters[index] = { id: updatedFilter.id, value: {value: updatedFilter.value, type: updatedFilter.type}};
+    setColumnFilters(newFilters);
   };
 
   const removeFilter = (index: number) => {
-    const newFilters = localFilters.filter((_, i) => i !== index);
-    setLocalFilters(newFilters);
-    setColumnFilters(newFilters.map((f) => ({
-      id: f.id,
-      value: f.value,
-      type: f.type,
-    })));
+    setColumnFilters(columnFilters.filter((_, i) => i !== index));
   };
 
   return (
-    <MenuWrapper label="Filter" icon={<ListFilter className="h-4 w-4" />} className="w-96">
+    <MenuWrapper label="Filter" icon={<ListFilter className="h-4 w-4" />} className="w-110">
       <div className="p-2 text-sm font-semibold text-gray-500">Filter by</div>
       <div className="border-b border-gray-200 my-1 mb-2 mx-1" />
-      {localFilters.length === 0 ? (
+      {mappedFilters.length === 0 ? (
         <MenuItem>
           <div className="px-4 py-2 text-sm text-gray-500">No filters applied.</div>
         </MenuItem>
       ) : (
-        localFilters.map((filter, index) => (
+        mappedFilters.map((filter, index) => (
           <FilterItem
             key={index}
             index={index}
@@ -241,7 +233,7 @@ const FilterMenu = ({ columns, setColumnFilters, columnFilters }: FilterMenuProp
         <button
           onClick={addFilter}
           className="flex items-center text-sm text-gray-400 hover:text-gray-800"
-          disabled={localFilters.length >= columns.length}
+          disabled={mappedFilters.length >= columns.length}
         >
           <PlusIcon className="h-4 w-4 mr-1" /> Add filter
         </button>
@@ -449,7 +441,7 @@ const SortMenu = ({ columns, sorting, setSorting }: SortMenuProps) => {
 };
 
 // Main TableTopBar Component
-const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sorting }: TableTopBarProps) => {
+const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sorting, tableId }: TableTopBarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (value: string) => {
@@ -460,6 +452,7 @@ const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sor
   return (
     <div className="flex items-center justify-between w-full mb-4 border-b border-gray-200 p-2">
       <div className="flex items-center space-x-2 ml-auto px-1">
+        <AddFakeRowMenu tableId={tableId} />
         <MenuWrapper label="Hide fields" icon={<EyeOff className="h-4 w-4" />} />
         <FilterMenu columns={columns} setColumnFilters={setColumnFilters} columnFilters={columnFilters} />
         <MenuWrapper label="Group" icon={<List className="h-4 w-4" />} />

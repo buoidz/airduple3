@@ -6,7 +6,7 @@ type TableTopNavProps = {
 
 export function TableTopNav({ tableName }: TableTopNavProps) {
   return (
-    <header className="h-14 bg-blue-600 text-white border-b border-blue-600 sticky top-0 flex items-center px-5">
+    <header className="sticky z-10 h-14 bg-blue-600 text-white border-b border-blue-600 top-0 flex items-center px-5">
       <div className="flex items-center gap-4">
         <Image
           src="/logo/airtable-white.png"

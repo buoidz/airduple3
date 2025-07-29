@@ -60,8 +60,8 @@ export const workspaceRouter = createTRPCRouter({
         // 2. Create two columns: name & note
         const columns = await ctx.db.column.createMany({
           data: [
-            { tableId: newTable.id, name: "name", type: ColumnType.TEXT, order: 0 },
-            { tableId: newTable.id, name: "note", type: ColumnType.TEXT, order: 1 }
+            { tableId: newTable.id, name: "Name", type: ColumnType.TEXT, order: 0 },
+            { tableId: newTable.id, name: "Note", type: ColumnType.TEXT, order: 1 }
           ]
         });
 
