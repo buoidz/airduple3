@@ -1,5 +1,5 @@
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/react';
-import { ArrowDownUp, ChevronDownIcon, EyeOff, List, ListFilter, PaintBucket, ExternalLink, Search, XIcon, PlusIcon } from 'lucide-react';
+import { ArrowDownUp, ChevronDownIcon, EyeOff, List, ListFilter, PaintBucket, ExternalLink, Search, XIcon, PlusIcon, Grid, Table2 } from 'lucide-react';
 import { useState } from 'react';
 import type { ColumnFiltersState, ColumnSort, SortingState } from '@tanstack/react-table';
 import { api } from '~/utils/api';
@@ -38,7 +38,7 @@ interface MenuWrapperProps {
 
 const MenuWrapper = ({ label, icon, children, className }: MenuWrapperProps) => (
   <Menu as="div" className="relative">
-    <MenuButton className="flex items-center rounded-sm px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-100 focus:outline-none">
+    <MenuButton className="flex items-center rounded-sm px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 focus:outline-none">
       {icon}
       <span className="ml-2">{label}</span>
     </MenuButton>
@@ -75,7 +75,7 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
   return (
     <button
       onClick={handleAddRows}
-      className="flex items-center rounded-sm px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-100 focus:outline-none"
+      className="flex items-center rounded-sm px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 focus:outline-none"
       disabled={addRowsMutation.isPending}
     >
       <PlusIcon className="h-4 w-4 mr-1" />
@@ -217,8 +217,8 @@ const FilterMenu = ({ columns, setColumnFilters, columnFilters }: FilterMenuProp
   return (
     <Menu as="div" className="relative">
       <MenuButton
-        className={`flex items-center rounded-sm px-2 py-1.5 text-sm focus:outline-none ${
-          columnFilters.length > 0 ? 'bg-green-200 hover:border-gray-300' : 'text-gray-800 hover:bg-gray-100'
+        className={`flex items-center rounded-sm px-2 py-1.5 text-xs text-gray-600 focus:outline-none ${
+          columnFilters.length > 0 ? 'bg-green-200 hover:border-gray-300' : 'hover:bg-gray-100'
         }`}
       >
         <ListFilter className="h-4 w-4 mr-1" />
@@ -390,8 +390,8 @@ const SortMenu = ({ columns, sorting, setSorting }: SortMenuProps) => {
   return (
     <Menu as="div" className="relative">
       <MenuButton
-        className={`flex items-center rounded-sm px-2 py-1.5 text-sm focus:outline-none ${
-          sorting.length > 0 ? 'bg-red-100 hover:border-gray-300' : 'text-gray-800 hover:bg-gray-100'
+        className={`flex items-center rounded-sm px-2 py-1.5 text-xs text-gray-600 focus:outline-none ${
+          sorting.length > 0 ? 'bg-red-100 hover:border-gray-300' : 'hover:bg-gray-100'
         }`}
       >
         <ArrowDownUp className="h-4 w-4 mr-1" />
@@ -469,8 +469,16 @@ const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sor
   };
 
   return (
-    <div className="flex items-center justify-between w-full mb-4 border-b border-gray-200 p-2">
-      <div className="flex items-center space-x-2 ml-auto px-1">
+    <div className="flex items-center justify-between w-full p-2">
+      <div className="flex items-center space-x-2">
+        <MenuWrapper label="" icon={<List className="h-4 w-4" />} />
+
+        <Table2 className="h-4 w-4" color='blue' />
+        <span className='text-xs font-semibold'>Grid view</span>
+        {/* <MenuWrapper label="Records" icon={<BarChart className="h-4 w-4" />} /> */}
+      </div>
+
+      <div className="flex items-center space-x-2 px-1">
         <AddFakeRowMenu tableId={tableId} />
         <MenuWrapper label="Hide fields" icon={<EyeOff className="h-4 w-4" />} />
         <FilterMenu columns={columns} setColumnFilters={setColumnFilters} columnFilters={columnFilters} />

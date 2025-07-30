@@ -1,9 +1,15 @@
 import { api } from "~/utils/api";
 import Link from "next/link";
 import { LoadingPage } from "../loadingpage";
+import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
+import { useState } from "react";
 
 export function HomeMainContent() {
   const utils = api.useUtils();
+
+
+  const [tableName, setTableName] = useState('')
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { data: workspaces, isLoading: workspaceLoading } = api.workspace.getAll.useQuery();
 
@@ -20,6 +26,14 @@ export function HomeMainContent() {
     },
   });
 
+  const handleCreateTable = (workspaceId: string) => {
+    if (tableName.trim()) {
+      createTable.mutate({ workspaceId, name: tableName.trim() });
+      setTableName('');
+      setIsMenuOpen(false);
+    }
+  };
+
 
 
   if (workspaceLoading) return <LoadingPage />;
@@ -27,16 +41,23 @@ export function HomeMainContent() {
 
   if (workspaces.length === 0) {
     return (
-      <main className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-4">No workspaces yet</h1>
-        <p className="text-gray-500 mb-6">Start by creating your first workspace.</p>
-        <button
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition"
-          onClick={() => createWorkspace.mutate({ name: "Untitled Workspace" })}
-          disabled={createWorkspace.isPending}
-        >
-          + Create Workspace
-        </button>
+      <main className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col">
+        <div className="self-start">
+          <h1 className="px-6 py-4 text-3xl font-semibold text-gray-900">Home</h1>
+          <p className="px-6 text-gray-600">Opened anytime</p>
+        </div>      
+        
+          
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <h1 className="text-2xl font-semibold text-gray-800 mb-4">You don't have any workspaces</h1>
+          <button
+            className="px-3 py-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition"
+            onClick={() => createWorkspace.mutate({ name: "Untitled Base" })}
+            disabled={createWorkspace.isPending}
+          >
+            Create a workspace
+          </button>
+        </div>
       </main>
     );
   }
@@ -46,34 +67,72 @@ export function HomeMainContent() {
       <h1 className="px-6 py-4 text-3xl font-semibold text-gray-900">Home</h1>
 
       {workspaces.map((workspace) => (
-        <div key={workspace.id} className="mb-6 bg-white shadow rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <button
-              className="mt-6 px-6 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition"
-              onClick={() => createTable.mutate({ workspaceId: workspace.id, name: "New Table"})}
-              disabled={createTable.isPending} 
-            >
-              Add new Table (to default Workspace)
-            </button>
-          </div>
+        <div key={workspace.id} className="px-6 py-4 ml-6 mt-10 bg-white rounded-lg shadow-sm w-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text font-semibold text-gray-800">{workspace.name}</h2>
+            <Menu as="div" className="relative">
+                <MenuButton 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 text-sm bg-blue-600 text-white font-small rounded hover:bg-blue-700 transition focus:outline-none"
+                >
+                  Add table
+                </MenuButton>
+                {isMenuOpen && (
+                  <>
+                    <MenuItems className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 p-2 focus:outline-none">
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Enter table name"
+                          value={tableName}
+                          onChange={(e) => setTableName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ') {
+                              e.stopPropagation();
+                            }
+                            if (e.key === 'Enter') {
+                              handleCreateTable(workspace.id);
+                            }
+                          }}
+                          className="w-full px-2 py-1 border text-sm border-gray-300 rounded-md focus:outline-none"
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleCreateTable(workspace.id)}
+                            disabled={createTable.isPending || !tableName.trim()}
+                            className="px-3 py-1 bg-blue-600 text-white text-xs rounded"
+                          >
+                            Create
+                          </button>
+                        </div>
+                      </div>
+                    </MenuItems>
+                  </>
+                )}
+              </Menu>
+            </div>
+            
+            {workspace.tables.length > 0 ? (
+              <ul className="space-y-1">
+                {workspace.tables.map((table) => (
+                  <li key={table.id}>
+                    <Link href={`/workspace/${workspace.id}/${table.id}`}>
+                      <span className="text-blue-600 hover:underline">{table.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500 italic">No tables yet</p>
+            )}
 
-          <h2 className="text-xl font-bold text-gray-800 mb-2">{workspace.name}</h2>
 
-          {workspace.tables.length > 0 ? (
-            <ul className="space-y-1">
-              {workspace.tables.map((table) => (
-                <li key={table.id}>
-                  <Link href={`/${table.id}`}>
-                    <span className="text-blue-600 hover:underline">{table.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500 italic">No tables yet</p>
-          )}
+            
         </div>
+        
       ))}
+
+    
 
 
     </main>

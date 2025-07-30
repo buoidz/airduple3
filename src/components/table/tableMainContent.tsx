@@ -150,7 +150,6 @@ function AddColumnMenu({
                   value={columnName}
                   onChange={(e) => setColumnName(e.target.value)}
                   onKeyDown={(e) => {
-                    console.log('Key:', e.key);
                     if (e.key === ' ') {
                       e.stopPropagation();
                     }
@@ -334,7 +333,7 @@ export function TableMainContent() {
 
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full ">
       <TableTopBar
         columns={columns.map((col) => ({ key: col.id, label: col.name, type: col.type }))}
         setColumnFilters={setColumnFilters}
@@ -344,16 +343,16 @@ export function TableMainContent() {
         tableId={tableId}
       />
 
-      <div ref={parentRef} className="container overflow-auto">
+      <div ref={parentRef} className="w-full overflow-auto border-t border-gray-300">
         <table className="text-left text-sm text-gray-600 font-normal leading-tight border-collapse">
           <thead>
             {tableInstance.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                <th className="text-gray-400 font-normal w-3 border-t border-b border-gray-300" ></th>
+                <th className="text-gray-400 font-normal w-3 border-b border-gray-300" ></th>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="relative group font-semibold border-t border-b border-r border-gray-300 "
+                    className="relative group font-semibold border-b border-r border-gray-300 "
                     style={{ width: header.getSize() }}
                   >
                     <div className="px-4 py-2 truncate whitespace-nowrap overflow-hidden text-ellipsis flex items-center h-full text-gray-800">
@@ -368,7 +367,7 @@ export function TableMainContent() {
                     )}
                   </th>
                 ))}
-                <th className="font-semibold border border-gray-300 relative p-0">
+                <th className="font-semibold border-b border-l border-r border-gray-300 relative p-0">
                   <AddColumnMenu
                     tableId={tableId}
                     isMenuOpen={isMenuOpen}
@@ -409,7 +408,7 @@ export function TableMainContent() {
             <tr>
               <td
               colSpan={1 + tableInstance.getVisibleLeafColumns().length}
-                className="p-0 border border-gray-300"
+                className="p-0 border-t border-r border-b border-gray-300"
               >
                 <button
                   onClick={handleAddRow}

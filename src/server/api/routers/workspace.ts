@@ -21,6 +21,40 @@ export const workspaceRouter = createTRPCRouter({
         },
       });
     }),
+
+  getWorkspaceName: privateProcedure
+ .input(z.object({ workspaceId: z.string() }))
+ .query(async ({ ctx, input }) => {
+   const workspace = await ctx.db.workspace.findUnique({
+     where: { id: input.workspaceId },
+     select: { name: true }
+   });
+   
+   return workspace?.name;
+ }),
+
+  getTablesInWorkspace: publicProcedure
+  .input(z.object({ tableId: z.string() }))
+  .query(async ({ ctx, input }) => {
+    const currentTable = await ctx.db.table.findUnique({
+      where: { id: input.tableId },
+      select: { workspaceId: true },
+    });
+
+    if (!currentTable) throw new Error("Table not found");
+
+    const tables = await ctx.db.table.findMany({
+      where: {
+        workspaceId: currentTable.workspaceId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    return tables;
+  }),
   
   getAll: privateProcedure
     .query(async ({ ctx }) => {

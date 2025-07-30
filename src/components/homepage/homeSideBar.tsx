@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, CaretRight, Export, Globe, House, Plus, ShoppingBagOpen, UsersThree } from "phosphor-react";
+import { BookOpen, CaretRight, Export, Globe, House, Plus, Share, ShoppingBagOpen, Star, UsersThree } from "phosphor-react";
 
 export function HomeSideBar() {
   return (
@@ -9,6 +9,8 @@ export function HomeSideBar() {
         {/* Top Icons */}
         <div className="flex flex-col items-center gap-y-4.5">
           <House size={20} color="#111827" />
+          <Star size={20} color="#111827" />
+          <Share size={20} color="#111827" />
           <UsersThree size={20} color="#111827" />
           {/* Divider line */}
           <div className="w-6 border-b border-gray-300 mt-2" />
@@ -27,22 +29,42 @@ export function HomeSideBar() {
       {/* Hover pop-out sidebar */}
       <div className="absolute top-0 h-full w-72 bg-white border-r border-gray-200 shadow-md -translate-x-full group-hover:translate-x-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150">
         <div className="flex flex-col justify-between h-full p-4">
-          
           {/* Top Icons */}
-          <div className="flex flex-col items-center gap-y-4.5">
-            <div className="flex flex-row px-2 py-1 items-center rounded-xs hover:bg-gray-100 w-full">
+          <div className="flex flex-col items-center">
+            <div className="flex flex-row px-2 py-2 items-center rounded-xs hover:bg-gray-100 w-full gap-2">
+              <House size={26} color="#111827" />
               <button className="font-medium text-left text-gray-900 cursor-pointer w-full">
                 <span>Home</span>
-
               </button>
               <button className="p-1 rounded-xs hover:bg-gray-200">
                 <CaretRight size={12} className="text-gray-900" />
               </button>
             </div>
 
-            <div className="flex flex-row px-2 py-1 items-center rounded-xs hover:bg-gray-100 w-full">
+            <div className="flex flex-row px-2 py-2 items-center rounded-xs hover:bg-gray-100 w-full gap-2">
+              <Star size={24} color="#111827" />
               <button className="font-medium text-left text-gray-900 cursor-pointer w-full">
-                <span>All workspaces</span>
+                <span>Starred</span>
+              </button>
+              <button className="p-1 rounded-xs hover:bg-gray-200">
+                <CaretRight size={12} className="text-gray-900" />
+              </button>
+            </div>
+
+            <div className="flex flex-row px-2 py-2 items-center rounded-xs hover:bg-gray-100 w-full gap-2">
+              <Share size={24} color="#111827" />
+              <button className="font-medium text-left text-gray-900 cursor-pointer w-full">
+                <span>Shared</span>
+              </button>
+              <button className="p-1 rounded-xs hover:bg-gray-200">
+                <CaretRight size={12} className="text-gray-900" />
+              </button>
+            </div>
+
+            <div className="flex flex-row px-2 py-2 items-center rounded-xs hover:bg-gray-100 w-full gap-2">
+              <UsersThree size={24} color="#111827" />
+              <button className="font-medium text-left text-gray-900 cursor-pointer w-full">
+                <span>Workspaces</span>
               </button>
               <button className="p-1 rounded-xs hover:bg-gray-200">
                 <Plus size={12} className="text-gray-900" />
@@ -68,7 +90,7 @@ export function HomeSideBar() {
               <Export size={16} color="#111827" />
               <span className="text-xs text-gray-900">Import</span>
             </button>
-            <button className="flex items-center justify-center w-full bg-blue-600 gap-1.5 py-2 rounded">
+            <button className="flex items-center justify-center w-full bg-blue-600 gap-1.5 py-2 rounded hover:cursor-pointer">
               <Plus size={16} color="#ffffff" />
               <span className="text-white text-sm font-medium">Create</span>
             </button>
