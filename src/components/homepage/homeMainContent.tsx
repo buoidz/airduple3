@@ -4,9 +4,72 @@ import { LoadingPage } from "../loadingpage";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 import { useState } from "react";
 
-export function HomeMainContent() {
+function AddWorkspaceButton() {
   const utils = api.useUtils();
 
+  const [workspaceName, setWorkspaceName] = useState('')
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const createTable = api.workspace.create.useMutation({
+    onSuccess: async () => {
+      await utils.workspace.getAll.invalidate(); 
+    },
+  });
+
+    const handleCreateWorkspace = () => {
+    if (workspaceName.trim()) {
+      createTable.mutate({ name: workspaceName.trim() });
+      setWorkspaceName('');
+      setIsMenuOpen(false);
+    }
+  };
+
+  return (
+    <Menu as="div" className="relative">
+      <MenuButton 
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="p-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none"
+      >
+        Create
+      </MenuButton>
+      {isMenuOpen && (
+        <>
+          <MenuItems className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 p-2 focus:outline-none">
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="Enter workspace name"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === ' ') {
+                    e.stopPropagation();
+                  }
+                  if (e.key === 'Enter') {
+                    handleCreateWorkspace();
+                  }
+                }}
+                className="w-full px-2 py-1 border text-sm border-gray-300 rounded-md focus:outline-none"
+              />
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleCreateWorkspace()}
+                  disabled={createTable.isPending || !workspaceName.trim()}
+                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </MenuItems>
+        </>
+      )}
+    </Menu>
+  );
+}
+
+export function HomeMainContent() {
+  const utils = api.useUtils();
 
   const [tableName, setTableName] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -42,22 +105,15 @@ export function HomeMainContent() {
   if (workspaces.length === 0) {
     return (
       <main className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col">
-        <div className="self-start">
-          <h1 className="px-6 py-4 text-3xl font-semibold text-gray-900">Home</h1>
-          <p className="px-6 text-gray-600">Opened anytime</p>
+        <div className="self-start px-6 w-full">
+          <h1 className="py-4 text-3xl font-semibold text-gray-900">Home</h1>
+
+          <div className="flex items-center justify-between pr-10">
+            <p className="text-gray-600">Opened anytime</p>
+            <AddWorkspaceButton />
+          </div>
         </div>      
         
-          
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-4">You don't have any workspaces</h1>
-          <button
-            className="px-3 py-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition"
-            onClick={() => createWorkspace.mutate({ name: "Untitled Base" })}
-            disabled={createWorkspace.isPending}
-          >
-            Create a workspace
-          </button>
-        </div>
       </main>
     );
   }

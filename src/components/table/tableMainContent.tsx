@@ -305,8 +305,6 @@ export function TableMainContent() {
     columnResizeMode: 'onChange',
   });
 
-  if (isLoading) return <div>Loading table...</div>;
-  if (!table) return <div>Table not found</div>;
 
   const addRowMutation = api.table.addRow.useMutation({
     onSuccess: () => {

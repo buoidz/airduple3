@@ -11,15 +11,6 @@ import { TableSwitcher } from "./tableSwitcher";
 type RowData = Record<string, any>;
 
 export function TableClient() {
-  const params = useParams();
-  const tableId = params?.tableId as string;
-
-  const { data: table, isLoading } = api.table.getById.useQuery({ tableId: tableId });
-
-  if (isLoading) return <div>Loading table...</div>;
-  if (!table) return <div>Table not found</div>;
-
-
   return (
     <div className="flex w-full h-screen overflow-hidden">
       <TableSideBar />
