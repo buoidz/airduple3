@@ -1,245 +1,256 @@
-  import { useParams } from "next/navigation";
-  import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type CellContext, type ColumnFiltersState, type Row, type SortingState, type VisibilityState } from "@tanstack/react-table";
-  import { useEffect, useMemo, useRef, useState } from "react";
-  import { useVirtualizer } from '@tanstack/react-virtual';
-  import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
-  import { api } from "~/utils/api";
-  import Filter from "./filter";
-  import TableTopBar from "./tableTopBar";
-  import { LoadingPage, LoadingSpinner } from "../loadingpage";
+import { useParams } from "next/navigation";
+import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type CellContext, type ColumnFiltersState, type Row, type SortingState, type VisibilityState } from "@tanstack/react-table";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
+import { api } from "~/utils/api";
+import Filter from "./filter";
+import TableTopBar from "./tableTopBar";
+import { LoadingPage, LoadingSpinner } from "../loadingpage";
 
-  // Types
-  type RowData = Record<string, any>;
+// Types
+type RowData = Record<string, any>;
 
-  type FilterType = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan';
+type FilterType = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan';
+
+interface ApiFilter {
+  columnId: string;
+  type: FilterType;
+  value: string;
+}
+
+interface ApiSort {
+  columnId: string;
+  direction: 'asc' | 'desc';
+}
 
 
+interface EditableCellProps {
+  initialValue: string;
+  tableId: string;
+  rowIndex: number;
+  columnId: string;
+  isSearchMatch?: boolean;
+}
 
-  interface EditableCellProps {
-    initialValue: string;
-    tableId: string;
-    rowIndex: number;
-    columnId: string;
-    isSearchMatch?: boolean;
-  }
+function EditableCell({ initialValue, tableId, rowIndex, columnId, isSearchMatch }: EditableCellProps) {
 
-  function EditableCell({ initialValue, tableId, rowIndex, columnId, isSearchMatch }: EditableCellProps) {
-    const [value, setValue] = useState(initialValue);
-    const [status, setStatus] = useState<'idle' | 'pending' | 'saving' | 'syncing' | 'synced' | 'error'>('idle');
-    const utils = api.useUtils();
-    
-    const updateCell = api.table.updateCell.useMutation({
-      onMutate: () => {
-        setStatus('saving');
-      },
-      onSuccess: async () => {
-        setStatus('syncing'); // Blue: Saved to server, refreshing UI
+  const [value, setValue] = useState(initialValue);
+  const [status, setStatus] = useState<'idle' | 'pending' | 'saving' | 'syncing' | 'synced' | 'error'>('idle');
+  const utils = api.useUtils();
+  
+  const updateCell = api.table.updateCell.useMutation({
+    onMutate: () => {
+      setStatus('saving');
+    },
+    onSuccess: async () => {
+      setStatus('syncing'); // Blue: Saved to server, refreshing UI
+      
+      try {
+        // Wait for BOTH the table data AND row data to refresh
+        await Promise.all([
+          utils.table.getById.invalidate({ tableId }),
+          utils.table.getRows.invalidate({ tableId })
+        ]);
         
-        try {
-          // Wait for BOTH the table data AND row data to refresh
-          await Promise.all([
-            utils.table.getById.invalidate({ tableId }),
-            utils.table.getRows.invalidate({ tableId })
-          ]);
-          
-          setStatus('synced'); // Green: Everything is in sync
-          
-          // Reset to idle after showing success briefly
-          setTimeout(() => setStatus('idle'), 1500);
-        } catch (error) {
-          setStatus('error');
-          setTimeout(() => setStatus('idle'), 2000);
-        }
-      },
-      onError: () => {
+        setStatus('synced'); // Green: Everything is in sync
+        
+        // Reset to idle after showing success briefly
+        setTimeout(() => setStatus('idle'), 1500);
+      } catch (error) {
         setStatus('error');
         setTimeout(() => setStatus('idle'), 2000);
       }
-    });
+    },
+    onError: () => {
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 2000);
+    }
+  });
 
-    const handleBlur = () => {
-      if (value !== initialValue) {
-        setStatus('pending');
-        updateCell.mutate({ tableId, rowIndex, columnId, value });
-      }
-    };
+  const handleBlur = () => {
+    if (value !== initialValue) {
+      setStatus('pending');
+      updateCell.mutate({ tableId, rowIndex, columnId, value });
+    }
+  };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setValue(e.target.value);
-      if (status === 'idle' && e.target.value !== initialValue) {
-        setStatus('pending');
-      }
-    };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    if (status === 'idle' && e.target.value !== initialValue) {
+      setStatus('pending');
+    }
+  };
 
-    const getStatusIndicator = () => {
-      switch (status) {
-        case 'pending':
-          return <div className="w-2 h-2 bg-yellow-400 rounded-full absolute -top-1 -right-1"></div>;
-        case 'saving':
-          return <div className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin absolute -top-1 -right-1"></div>;
-        case 'syncing':
-          return <div className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin absolute -top-1 -right-1"></div>;
-        case 'synced':
-          return <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1"></div>;
-        case 'error':
-          return <div className="w-2 h-2 bg-red-500 rounded-full absolute -top-1 -right-1"></div>;
-        default:
-          return null;
-      }
-    };
+  const getStatusIndicator = () => {
+    switch (status) {
+      case 'pending':
+        return <div className="w-2 h-2 bg-yellow-400 rounded-full absolute -top-1 -right-1"></div>;
+      case 'saving':
+        return <div className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin absolute -top-1 -right-1"></div>;
+      case 'syncing':
+        return <div className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin absolute -top-1 -right-1"></div>;
+      case 'synced':
+        return <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1"></div>;
+      case 'error':
+        return <div className="w-2 h-2 bg-red-500 rounded-full absolute -top-1 -right-1"></div>;
+      default:
+        return null;
+    }
+  };
 
-    return (
-      <div className={`relative w-full ${isSearchMatch ? 'bg-orange-200' : ''}`}>
-        <input
-          className="w-full border-none bg-transparent focus:outline-none"
-          value={value}
-          onChange={handleChange}
-          onBlur={handleBlur}
-        />
-        {getStatusIndicator()}
-      </div>
-    );
-  }
+  return (
+    <div className={`relative w-full ${isSearchMatch ? 'bg-orange-200' : ''}`}>
+      <input
+        className="w-full border-none bg-transparent focus:outline-none"
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+      />
+      {getStatusIndicator()}
+    </div>
+  );
+}
 
-  // Add Column Menu Component
-  interface AddColumnMenuProps {
-    tableId: string;
-    isMenuOpen: boolean;
-    setIsMenuOpen: (open: boolean) => void;
-    selectedType: 'TEXT' | 'NUMBER' | null;
-    setSelectedType: (type: 'TEXT' | 'NUMBER' | null) => void;
-    columnName: string;
-    setColumnName: (name: string) => void;
-  }
+// Add Column Menu Component
+interface AddColumnMenuProps {
+  tableId: string;
+  isMenuOpen: boolean;
+  setIsMenuOpen: (open: boolean) => void;
+  selectedType: 'TEXT' | 'NUMBER' | null;
+  setSelectedType: (type: 'TEXT' | 'NUMBER' | null) => void;
+  columnName: string;
+  setColumnName: (name: string) => void;
+}
 
-  function AddColumnMenu({
-    tableId,
-    isMenuOpen,
-    setIsMenuOpen,
-    selectedType,
-    setSelectedType,
-    columnName,
-    setColumnName,
-  }: AddColumnMenuProps) {
-    const utils = api.useUtils();
-    const menuRef = useRef<HTMLDivElement>(null);
+function AddColumnMenu({
+  tableId,
+  isMenuOpen,
+  setIsMenuOpen,
+  selectedType,
+  setSelectedType,
+  columnName,
+  setColumnName,
+}: AddColumnMenuProps) {
+  const utils = api.useUtils();
+  const menuRef = useRef<HTMLDivElement>(null);
 
-    const addColumn = api.table.addColumn.useMutation({
-      onSuccess: () => {
-        utils.table.getById.invalidate({ tableId }),
-        utils.table.getRows.invalidate({ tableId })
-      },
-    });
+  const addColumn = api.table.addColumn.useMutation({
+    onSuccess: () => {
+      utils.table.getById.invalidate({ tableId }),
+      utils.table.getRows.invalidate({ tableId })
+    },
+  });
 
-    const handleCreate = () => {
-      if (columnName.trim() && selectedType) {
-        addColumn.mutate({ tableId, name: columnName, type: selectedType });
-        setSelectedType(null);
-        setColumnName('');
-        setIsMenuOpen(false);
-      }
-    };
-
-    const handleCancel = () => {
+  const handleCreate = () => {
+    if (columnName.trim() && selectedType) {
+      addColumn.mutate({ tableId, name: columnName, type: selectedType });
       setSelectedType(null);
       setColumnName('');
       setIsMenuOpen(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedType(null);
+    setColumnName('');
+    setIsMenuOpen(false);
+  };
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+        setSelectedType(null);
+        setColumnName('');
+      }
+    }
+
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, [isMenuOpen, setIsMenuOpen, setSelectedType, setColumnName]);
 
-    useEffect(() => {
-      function handleClickOutside(event: MouseEvent) {
-        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-          setIsMenuOpen(false);
-          setSelectedType(null);
-          setColumnName('');
-        }
-      }
-
-      if (isMenuOpen) {
-        document.addEventListener("mousedown", handleClickOutside);
-      }
-
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }, [isMenuOpen, setIsMenuOpen, setSelectedType, setColumnName]);
-
-    return (
-      <div ref={menuRef} className="relative w-full h-full focus:outline-none">
-        <Menu>
-          <MenuButton
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-full h-full block hover:bg-gray-300 text-center px-4 py-2  focus:outline-none"
+  return (
+    <div ref={menuRef} className="relative w-full h-full focus:outline-none">
+      <Menu>
+        <MenuButton
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="w-full h-full block hover:bg-gray-300 text-center px-4 py-2  focus:outline-none"
+        >
+          +
+        </MenuButton>
+        {isMenuOpen && (
+          <MenuItems
+            static
+            className="absolute z-20 mt-2 w-64 bg-white border border-gray-300 rounded shadow-lg p-2 right-0  focus:outline-none"
           >
-            +
-          </MenuButton>
-          {isMenuOpen && (
-            <MenuItems
-              static
-              className="absolute z-20 mt-2 w-64 bg-white border border-gray-300 rounded shadow-lg p-2 right-0  focus:outline-none"
-            >
-              {!selectedType ? (
-                <div className="flex flex-col gap-1">
-                  <div className="p-1 text-sm font-normal text-gray-500">Standard fields</div>
-                  <div className="border-b border-gray-200 my-1 mx-1" />
-                  <MenuItem>
-                    <button
-                      onClick={() => setSelectedType('TEXT')}
-                      className="text-left px-2 py-1 rounded hover:bg-gray-100"
-                    >
-                      Text
-                    </button>
-                  </MenuItem>
-                  <MenuItem>
-                    <button
-                      onClick={() => setSelectedType('NUMBER')}
-                      className="text-left px-2 py-1 rounded hover:bg-gray-100"
-                    >
-                      Number
-                    </button>
-                  </MenuItem>
+            {!selectedType ? (
+              <div className="flex flex-col gap-1">
+                <div className="p-1 text-sm font-normal text-gray-500">Standard fields</div>
+                <div className="border-b border-gray-200 my-1 mx-1" />
+                <MenuItem>
+                  <button
+                    onClick={() => setSelectedType('TEXT')}
+                    className="text-left px-2 py-1 rounded hover:bg-gray-100"
+                  >
+                    Text
+                  </button>
+                </MenuItem>
+                <MenuItem>
+                  <button
+                    onClick={() => setSelectedType('NUMBER')}
+                    className="text-left px-2 py-1 rounded hover:bg-gray-100"
+                  >
+                    Number
+                  </button>
+                </MenuItem>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 p-2">
+                <input
+                  type="text"
+                  value={columnName}
+                  onChange={(e) => setColumnName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ') {
+                      e.stopPropagation();
+                    }
+                  }}
+                  placeholder="Field name"
+                  className="border border-gray-300 rounded px-2 py-1 focus:outline-none"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={handleCancel}
+                    className="px-3 py-1 rounded hover:bg-gray-300 text-xs hover:cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreate}
+                    disabled={!columnName.trim()}
+                    className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:cursor-pointer"
+                  >
+                    Create field
+                  </button>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2 p-2">
-                  <input
-                    type="text"
-                    value={columnName}
-                    onChange={(e) => setColumnName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === ' ') {
-                        e.stopPropagation();
-                      }
-                    }}
-                    placeholder="Field name"
-                    className="border border-gray-300 rounded px-2 py-1 focus:outline-none"
-                    autoFocus
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={handleCancel}
-                      className="px-3 py-1 rounded hover:bg-gray-300 text-xs hover:cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleCreate}
-                      disabled={!columnName.trim()}
-                      className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:cursor-pointer"
-                    >
-                      Create field
-                    </button>
-                  </div>
-                </div>
-              )}
-            </MenuItems>
-          )}
-        </Menu>
-      </div>
-    );
-  }
+              </div>
+            )}
+          </MenuItems>
+        )}
+      </Menu>
+    </div>
+  );
+}
 
 // Main Table Component
-export function TableMainContent() {
+export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingState: (val: boolean) => void }) {
   const params = useParams();
   const tableId = params?.tableId as string;
 
@@ -252,6 +263,24 @@ export function TableMainContent() {
   const [searchMatches, setSearchMatches] = useState<{ rowIndex: number; columnId: string }[]>([]);
 
 
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 1000); 
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const [debouncedFilters, setDebouncedFilters] = useState<ColumnFiltersState>([]);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedFilters(columnFilters);
+    }, 1000);
+
+    return () => clearTimeout(handler);
+  }, [columnFilters]);
+
 
   const utils = api.useUtils();
 
@@ -261,16 +290,69 @@ export function TableMainContent() {
 
   const { data: table, isLoading } = api.table.getById.useQuery({ tableId });
 
-  const { data: rowData, fetchNextPage, hasNextPage, isFetchingNextPage } = api.table.getRows.useInfiniteQuery(
-    { tableId, limit: 1000 },
+  // const { data: rowData, fetchNextPage, hasNextPage, isFetchingNextPage } = api.table.getRows.useInfiniteQuery(
+  //   { tableId, limit: 1000 },
+  //   {
+  //     getNextPageParam: (lastPage) => lastPage.nextCursor,
+  //     select: (data) => ({
+  //       pages: data.pages.flatMap((page) => page.rows),
+  //       pageParams: data.pageParams,
+  //     }),
+  //   }
+  // );
+
+
+  // Convert React Table filters and sorts to API format
+  const apiFilters: ApiFilter[] = useMemo(() => {
+    return debouncedFilters.map(filter => ({
+      columnId: filter.id,
+      type: (filter.value as { type: FilterType; value: string }).type,
+      value: (filter.value as { type: FilterType; value: string }).value,
+    })).filter(f => f.type && f.value);
+  }, [debouncedFilters]);
+
+  const apiSort: ApiSort[] = useMemo(() => {
+    return sortBy.map(sort => ({
+      columnId: sort.id,
+      direction: sort.desc ? 'desc' : 'asc'
+    }));
+  }, [sortBy]);
+
+  // Use the new API endpoint with server-side operations
+  const { 
+    data: rowData, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage,
+    isLoading: isRowsLoading,
+    isFetching,
+  } = api.table.getRowsWithOperations.useInfiniteQuery(
+    { 
+      tableId, 
+      limit: 100,
+      filters: apiFilters,
+      sort: apiSort,
+      search: debouncedSearchTerm.trim()
+    },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       select: (data) => ({
         pages: data.pages.flatMap((page) => page.rows),
         pageParams: data.pageParams,
+        totalCount: data.pages[0]?.totalCount || 0
       }),
+      // Refetch when filters, sort, or search change
+      enabled: !!tableId,
     }
   );
+
+  // const [cachedRowData, setCachedRowData] = useState<any[]>([]); // Cache for row data
+  // // Update cached data when new data is loaded
+  // useEffect(() => {
+  //   if (rowData?.pages) {
+  //     setCachedRowData(rowData.pages);
+  //   }
+  // }, [rowData]);
 
   const columns = useMemo(
     () => table?.columns.sort((a, b) => a.order - b.order) ?? [],
@@ -278,6 +360,7 @@ export function TableMainContent() {
   );
 
   const rows = useMemo(() => rowData?.pages ?? [], [rowData]);
+  // const rows = useMemo(() => (isFetching && cachedRowData.length > 0 ? cachedRowData : rowData?.pages ?? []), [rowData, isFetching, cachedRowData]);
 
   // Initialize columnVisibility state properly
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -304,50 +387,50 @@ export function TableMainContent() {
         minSize: 50,
         maxSize: 500,
         meta: { type: col.type }, // Add meta.type for filter logic
-        filterFn: (row: Row<RowData>, columnId: string, filterValue: { type: FilterType, value: string }) => {
-          const value = row.getValue(columnId);
-          const filter = filterValue.value;
-          const isText = col.type === 'TEXT';
+        // filterFn: (row: Row<RowData>, columnId: string, filterValue: { type: FilterType, value: string }) => {
+        //   const value = row.getValue(columnId);
+        //   const filter = filterValue.value;
+        //   const isText = col.type === 'TEXT';
           
-          if (!filterValue.type || !filter) return true; // No filter applied
+        //   if (!filterValue.type || !filter) return true; // No filter applied
 
-          if (isText) {
-            const rowValue = String(value).toLowerCase();
-            const filterLower = filter.toLowerCase();
-            switch (filterValue.type) {
-              case 'equals':
-                return rowValue === filterLower; // Uses equalsString logic
-              case 'notEquals':
-                return rowValue !== filterLower;
-              case 'contains':
-                return rowValue.includes(filterLower); // Uses includesString logic
-              case 'notContains':
-                return !rowValue.includes(filterLower);
-              default:
-                return true;
-            }
-          } else {
-            const rowValue = Number(value);
-            const filterNum = Number(filter);
-            if (isNaN(rowValue) || isNaN(filterNum)) return true; // Skip invalid numbers
-            switch (filterValue.type) {
-              case 'equals':
-                return rowValue === filterNum; // Uses equals logic
-              case 'notEquals':
-                return rowValue !== filterNum;
-              case 'greaterThan':
-                return rowValue > filterNum; // Uses inNumberRange logic
-              case 'lessThan':
-                return rowValue < filterNum;
-              default:
-                return true;
-            }
-          }
-        },
+        //   if (isText) {
+        //     const rowValue = String(value).toLowerCase();
+        //     const filterLower = filter.toLowerCase();
+        //     switch (filterValue.type) {
+        //       case 'equals':
+        //         return rowValue === filterLower; // Uses equalsString logic
+        //       case 'notEquals':
+        //         return rowValue !== filterLower;
+        //       case 'contains':
+        //         return rowValue.includes(filterLower); // Uses includesString logic
+        //       case 'notContains':
+        //         return !rowValue.includes(filterLower);
+        //       default:
+        //         return true;
+        //     }
+        //   } else {
+        //     const rowValue = Number(value);
+        //     const filterNum = Number(filter);
+        //     if (isNaN(rowValue) || isNaN(filterNum)) return true; // Skip invalid numbers
+        //     switch (filterValue.type) {
+        //       case 'equals':
+        //         return rowValue === filterNum; // Uses equals logic
+        //       case 'notEquals':
+        //         return rowValue !== filterNum;
+        //       case 'greaterThan':
+        //         return rowValue > filterNum; // Uses inNumberRange logic
+        //       case 'lessThan':
+        //         return rowValue < filterNum;
+        //       default:
+        //         return true;
+        //     }
+        //   }
+        // },
         cell: (props: CellContext<RowData, unknown>) => {
-          const isSearchMatch = searchMatches.some(
-            match => match.rowIndex === props.row.index && match.columnId === props.column.id
-          );
+          // const isSearchMatch = searchMatches.some(
+          //   match => match.rowIndex === props.row.index && match.columnId === props.column.id
+          // );
           
           return (
             <EditableCell
@@ -355,7 +438,7 @@ export function TableMainContent() {
               tableId={tableId}
               rowIndex={props.row.index}
               columnId={props.column.id}
-              isSearchMatch={isSearchMatch}
+              // isSearchMatch={isSearchMatch}
             />
           );
         },
@@ -376,26 +459,26 @@ export function TableMainContent() {
   );
 
   // Search functionality
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setSearchMatches([]);
-      return;
-  }
+  // useEffect(() => {
+  //   if (!searchTerm.trim()) {
+  //     setSearchMatches([]);
+  //     return;
+  // }
 
-  const matches: { rowIndex: number; columnId: string }[] = [];
-  const searchLower = searchTerm.toLowerCase();
+  // const matches: { rowIndex: number; columnId: string }[] = [];
+  // const searchLower = searchTerm.toLowerCase();
 
-  rowDataTransformed.forEach((row, rowIndex) => {
-    columns.forEach((col) => {
-      const cellValue = String(row[col.id] || '').toLowerCase();
-      if (cellValue.includes(searchLower)) {
-        matches.push({ rowIndex, columnId: col.id });
-      }
-    });
-  });
+  // rowDataTransformed.forEach((row, rowIndex) => {
+  //   columns.forEach((col) => {
+  //     const cellValue = String(row[col.id] || '').toLowerCase();
+  //     if (cellValue.includes(searchLower)) {
+  //       matches.push({ rowIndex, columnId: col.id });
+  //     }
+  //   });
+  // });
 
-  setSearchMatches(matches);
-}, [searchTerm, rowDataTransformed, columns]);
+  // setSearchMatches(matches);
+  // }, [searchTerm, rowDataTransformed, columns]);
 
   const tableInstance = useReactTable({
     data: rowDataTransformed,
@@ -409,9 +492,11 @@ export function TableMainContent() {
     onSortingChange: setSortBy,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    // getFilteredRowModel: getFilteredRowModel(),
+    // getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
+    manualFiltering: true,
+    manualSorting: true,
   });
 
 
@@ -438,7 +523,13 @@ export function TableMainContent() {
     overscan: 10,
   });
 
-  if (isLoading || !table || !rowData) return <LoadingPage />;
+  // if (isLoading || !table || !rowData) return <LoadingPage />;
+  if (isLoading || !table || !rowData) {
+    onChangeLoadingState(true);
+  } else {
+    onChangeLoadingState(false)
+  };
+
 
   return (
     <div className="w-full h-full overflow-auto">
@@ -494,6 +585,7 @@ export function TableMainContent() {
               </tr>
             ))}
           </thead>
+
           <tbody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const row = tableInstance.getRowModel().rows[virtualRow.index];

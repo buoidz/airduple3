@@ -3,9 +3,10 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { ClockCounterClockwise } from "phosphor-react";
 import { api } from "~/utils/api";
+import { LoadingPage, LoadingSpinner } from "../loadingpage";
 
 
-export function TableTopNav() {
+export function TableTopNav({ loadingState }: { loadingState: boolean }) {
   const params = useParams();
   const workspaceId = params?.workspaceId as string;
 
@@ -22,7 +23,27 @@ export function TableTopNav() {
             height={22}
           />
         </div>
-        <h1 className="text-lg font-semibold">{workspaceName}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold pr-3">{workspaceName}</h1>
+
+          <div className="flex items-center gap-2">
+            <span className={`w-4 h-4 relative inline-block ${
+                  loadingState ? "opacity-100" : "opacity-0"
+                }`}
+            >
+              <LoadingSpinner
+                size={18}
+              />
+            </span>
+            <span
+              className={`w-12 text-gray-700 transition-opacity duration-200 ${
+                loadingState ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              Loading...
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}
