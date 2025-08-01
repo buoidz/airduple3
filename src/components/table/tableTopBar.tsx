@@ -1,7 +1,7 @@
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/react';
 import { ArrowDownUp, ChevronDownIcon, EyeOff, List, ListFilter, PaintBucket, ExternalLink, Search, XIcon, PlusIcon, Grid, Table2 } from 'lucide-react';
 import { useState } from 'react';
-import type { ColumnFiltersState, ColumnSort, SortingState } from '@tanstack/react-table';
+import type { ColumnFiltersState, ColumnSort, SortingState, VisibilityState } from '@tanstack/react-table';
 import { api } from '~/utils/api';
 
 // Interfaces for type safety
@@ -14,9 +14,14 @@ interface Column {
 interface TableTopBarProps {
   columns: Column[];
   setColumnFilters: (filters: ColumnFiltersState) => void;
-  columnFilters: ColumnFiltersState; // Added to manage filter state
+  columnFilters: ColumnFiltersState; 
   setSorting: (sorting: SortingState) => void;
   sorting: SortingState;
+  columnVisibility: VisibilityState;
+  setColumnVisibility: React.Dispatch<React.SetStateAction<VisibilityState>>;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  searchMatchCount: number;
   tableId: string;
 }
 
@@ -59,7 +64,7 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
     onSuccess: () => {
       utils.table.getById.invalidate({ tableId });
     },
-    onError: (error) => {
+  onError: (error) => {
       console.error('Error adding rows:', error);
       alert('Failed to add rows. Please try again.');
     },
@@ -84,6 +89,46 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
   );
 };
 
+interface HideFieldsMenuProps {
+  columns: Column[];
+  columnVisibility: VisibilityState;
+  setColumnVisibility: React.Dispatch<React.SetStateAction<VisibilityState>>;
+}
+
+const HideFieldsMenu = ({ columns, columnVisibility, setColumnVisibility }: HideFieldsMenuProps) => {
+  return (
+    <MenuWrapper label="Hide fields" icon={<EyeOff className="h-4 w-4" />}>
+      <div className="p-2">
+        {columns.map((col) => (
+            <label className="flex items-center justify-between w-full px-2 py-1 rounded-sm text-sm cursor-pointer">
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  disabled={
+                    columnVisibility[col.key] !== false &&
+                    Object.values(columnVisibility).filter((v) => v !== false).length === 1
+                  }
+                  checked={columnVisibility[col.key] !== false}
+                  onChange={() =>
+                    setColumnVisibility((prev) => ({
+                      ...prev,
+                      [col.key]: !prev[col.key],
+                    }))
+                  }
+                />
+                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-200 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 dark:peer-checked:bg-green-600"></div>
+                <span className="ms-3 mb-1 text-sm font-medium text-gray-900">{col.label}</span>
+
+                {/* <span className="slider"></span> */}
+              </label>
+              {/* <span>{col.label}</span>  */}
+            </label>
+        ))}
+      </div>
+    </MenuWrapper>
+  )
+};
 
 // Filter Item Component
 interface FilterItemProps {
@@ -459,8 +504,54 @@ const SortMenu = ({ columns, sorting, setSorting }: SortMenuProps) => {
   );
 };
 
+// Search Menu Component
+interface SearchMenuProps {
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  searchMatchCount: number;
+}
+
+const SearchMenu = ({ searchTerm, setSearchTerm, searchMatchCount }: SearchMenuProps) => {
+  return (
+    <Menu as="div" className="relative">
+      <MenuButton 
+        className={`flex items-center rounded-sm px-2 py-1.5 text-xs text-gray-600 focus:outline-none ${
+          searchTerm ? 'bg-blue-100 hover:border-gray-300' : 'hover:bg-gray-100'
+        }`}
+      >
+        <Search className="h-4 w-4" />
+      </MenuButton>
+      <MenuItems className="absolute right-0 w-80 border border-gray-200 shadow-lg bg-white focus:outline-none">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search all columns..."
+            className="w-full px-3 py-2  focus:outline-none text-sm"
+            autoFocus
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <div className="p-2 text-xs text-gray-500 bg-gray-200">
+            Found {searchMatchCount} cell{searchMatchCount !== 1 ? 's' : ''}
+          </div>
+        )}
+      </MenuItems>
+    </Menu>
+  );
+};
+
 // Main TableTopBar Component
-const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sorting, tableId }: TableTopBarProps) => {
+const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sorting, setColumnVisibility, columnVisibility, setSearchTerm, searchTerm, searchMatchCount, tableId }: TableTopBarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (value: string) => {
@@ -469,7 +560,7 @@ const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sor
   };
 
   return (
-    <div className="flex items-center justify-between w-full p-2">
+    <div className="flex items-center justify-between w-full p-2 sticky top-0 z-10 bg-white border-b border-gray-300">
       <div className="flex items-center space-x-2">
         <MenuWrapper label="" icon={<List className="h-4 w-4" />} />
 
@@ -480,14 +571,15 @@ const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sor
 
       <div className="flex items-center space-x-2 px-1">
         <AddFakeRowMenu tableId={tableId} />
-        <MenuWrapper label="Hide fields" icon={<EyeOff className="h-4 w-4" />} />
+        <HideFieldsMenu columns={columns} setColumnVisibility={setColumnVisibility} columnVisibility={columnVisibility} />
         <FilterMenu columns={columns} setColumnFilters={setColumnFilters} columnFilters={columnFilters} />
         <MenuWrapper label="Group" icon={<List className="h-4 w-4" />} />
         <SortMenu columns={columns} sorting={sorting} setSorting={setSorting} />
         <MenuWrapper label="Color" icon={<PaintBucket className="h-4 w-4" />} />
         <MenuWrapper label="" icon={<List className="h-4 w-4" />} className="w-48" />
         <MenuWrapper label="Share and syncs" icon={<ExternalLink className="h-4 w-4" />} />
-        <MenuWrapper label="" icon={<Search className="h-4 w-4" />} className="w-48" />
+        {/* <MenuWrapper label="" icon={<Search className="h-4 w-4" />} className="w-48" /> */}
+        <SearchMenu searchTerm={searchTerm} setSearchTerm={setSearchTerm} searchMatchCount={searchMatchCount} />
       </div>
     </div>
   );

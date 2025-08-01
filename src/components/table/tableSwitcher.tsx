@@ -10,35 +10,42 @@ export function TableSwitcher() {
   const params = useParams();
   const currentTableId = params?.tableId as string;
   const workspaceId = params?.workspaceId as string;
+  const utils = api.useUtils();
   
 
-  const { data: tables, isLoading } = api.workspace.getTablesInWorkspace.useQuery({
-    tableId: currentTableId,
-  });
+  const { data: tables, isLoading } = api.workspace.getTablesInWorkspace.useQuery(
+    {
+      workspaceId: workspaceId,
+    },
+  );
 
   const [tableName, setTableName] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const createTableMutation = api.workspace.createTableDefault.useMutation({
-    onSuccess: () => {
+    onSuccess: (newTable) => {
       setTableName('');
+      utils.workspace.getTablesInWorkspace.invalidate();
+
+    },
+    onError: (error) => {
+      console.error('Failed to create table:', error);
     }
-});
+  });
 
   const handleCreateTable = (workspaceId: string) => {
-    if (tableName.trim()) {
+    if (tableName.trim() && !createTableMutation.isPending) {
       createTableMutation.mutate({ workspaceId, name: tableName.trim() });
-      setTableName('');
       setIsMenuOpen(false);
     }
   };
 	
 
-  if (isLoading) return <div className="bg-gray-50 border-t border-b border-gray-300 text-sm p-2">Loading tables...</div>;
+  if (isLoading) return <div className="bg-gray-50 border-t border-b border-gray-300 text-sm p-2 min-h-[32px]"> </div>;
   if (!tables) return null;
 
   return (
-    <div className="bg-gray-50 border-t border-b border-gray-300">
+    <div className="bg-gray-50 border-t border-b border-gray-300 ">
       <div className="flex">
         {tables.map((table, index) => (
           <button
@@ -57,8 +64,20 @@ export function TableSwitcher() {
             {table.name}
           </button>
         ))}
+
+        {createTableMutation.isPending && (
+          <div className="flex-shrink-0 px-3 py-2 text-xs text-gray-500 bg-gray-100 rounded-sm rounded-b-none flex items-center gap-2">
+            <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            Creating...
+          </div>
+        )}
+
+        <div className="pl-2 flex items-center">
+          <div className="border-l border-gray-300 h-5" />
+        </div>
+
 				<Menu as="div" className="relative">
-					<MenuButton onClick={() => setIsMenuOpen(true)} className="flex-shrink-0 px-3 py-2 text-sm text-gray-500 hover:bg-gray-200 rounded-sm rounded-b-none focus:outline-none">
+					<MenuButton onClick={() => setIsMenuOpen(true)} className="flex-shrink-0 px-3 py-2 text-xs text-gray-500 hover:bg-gray-200 rounded-sm rounded-b-none focus:outline-none">
 						+ Add Table
 					</MenuButton>
           {isMenuOpen && (

@@ -34,18 +34,11 @@ export const workspaceRouter = createTRPCRouter({
  }),
 
   getTablesInWorkspace: publicProcedure
-  .input(z.object({ tableId: z.string() }))
+  .input(z.object({ workspaceId: z.string() }))
   .query(async ({ ctx, input }) => {
-    const currentTable = await ctx.db.table.findUnique({
-      where: { id: input.tableId },
-      select: { workspaceId: true },
-    });
-
-    if (!currentTable) throw new Error("Table not found");
-
     const tables = await ctx.db.table.findMany({
       where: {
-        workspaceId: currentTable.workspaceId,
+        workspaceId: input.workspaceId,
       },
       select: {
         id: true,
@@ -122,7 +115,9 @@ export const workspaceRouter = createTRPCRouter({
             }))
           });
         }
-      
+      },
+      {
+        timeout: 15000,
       });
 
       return table;
