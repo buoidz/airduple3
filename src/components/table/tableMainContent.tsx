@@ -50,7 +50,7 @@ function EditableCell({ initialValue, tableId, rowIndex, columnId, isSearchMatch
         // Wait for BOTH the table data AND row data to refresh
         await Promise.all([
           utils.table.getById.invalidate({ tableId }),
-          utils.table.getRows.invalidate({ tableId })
+          utils.table.getRowsWithOperations.invalidate({ tableId })
         ]);
         
         setStatus('synced'); // Green: Everything is in sync
@@ -259,27 +259,43 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   const [selectedType, setSelectedType] = useState<'TEXT' | 'NUMBER' | null>(null);
   const [columnName, setColumnName] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
   const [searchMatches, setSearchMatches] = useState<{ rowIndex: number; columnId: string }[]>([]);
 
 
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 1000); 
+  // const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+  // useEffect(() => {
+  //   const handler = setTimeout(() => {
+  //     setDebouncedSearchTerm(searchTerm);
+  //   }, 500); 
 
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
+  //   return () => clearTimeout(handler);
+  // }, [searchTerm]);
 
   const [debouncedFilters, setDebouncedFilters] = useState<ColumnFiltersState>([]);
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedFilters(columnFilters);
-    }, 1000);
+    }, 500);
 
     return () => clearTimeout(handler);
   }, [columnFilters]);
+
+  useEffect(() => {
+    if (searchTerm !== debouncedSearchTerm) {
+      setIsSearching(true);
+    }
+    
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setIsSearching(false);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm, debouncedSearchTerm]);
 
 
   const utils = api.useUtils();
@@ -330,9 +346,16 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     { 
       tableId, 
       limit: 100,
-      filters: apiFilters,
-      sort: apiSort,
-      search: debouncedSearchTerm.trim()
+      filters: debouncedFilters.map(filter => ({
+        columnId: filter.id,
+        type: (filter.value as { type: FilterType; value: string }).type,
+        value: (filter.value as { type: FilterType; value: string }).value,
+      })).filter(f => f.type && f.value),
+      sort: sortBy.map(sort => ({
+        columnId: sort.id,
+        direction: sort.desc ? 'desc' : 'asc'
+      })),
+      // search: debouncedSearchTerm.trim() - Handle on client side
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -341,7 +364,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         pageParams: data.pageParams,
         totalCount: data.pages[0]?.totalCount || 0
       }),
-      // Refetch when filters, sort, or search change
       enabled: !!tableId,
     }
   );
@@ -375,7 +397,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
       setColumnVisibility(initialVisibility);
     }
   }, [columns]);
-  // console.log(searchMatches);
 
   const columnDefs = useMemo(
     () =>
@@ -428,9 +449,12 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         //   }
         // },
         cell: (props: CellContext<RowData, unknown>) => {
-          // const isSearchMatch = searchMatches.some(
-          //   match => match.rowIndex === props.row.index && match.columnId === props.column.id
-          // );
+          const isSearchMatch = searchMatches.some(
+            match => {
+              const isMatch = match.rowIndex === props.row.index && match.columnId === props.column.id;
+              return isMatch;
+            }
+          );
           
           return (
             <EditableCell
@@ -438,7 +462,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
               tableId={tableId}
               rowIndex={props.row.index}
               columnId={props.column.id}
-              // isSearchMatch={isSearchMatch}
+              isSearchMatch={isSearchMatch}
             />
           );
         },
@@ -457,28 +481,29 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
       }),
     [rows]
   );
+  
 
   // Search functionality
-  // useEffect(() => {
-  //   if (!searchTerm.trim()) {
-  //     setSearchMatches([]);
-  //     return;
-  // }
+  useEffect(() => {
+    if (!debouncedSearchTerm.trim()) {
+      setSearchMatches([]);
+      return;
+    }
 
-  // const matches: { rowIndex: number; columnId: string }[] = [];
-  // const searchLower = searchTerm.toLowerCase();
+    const matches: { rowIndex: number; columnId: string }[] = [];
+    const searchLower = debouncedSearchTerm.toLowerCase();
 
-  // rowDataTransformed.forEach((row, rowIndex) => {
-  //   columns.forEach((col) => {
-  //     const cellValue = String(row[col.id] || '').toLowerCase();
-  //     if (cellValue.includes(searchLower)) {
-  //       matches.push({ rowIndex, columnId: col.id });
-  //     }
-  //   });
-  // });
+    rowDataTransformed.forEach((row, rowIndex) => {
+      columns.forEach((col) => {
+        const cellValue = String(row[col.id] || '').toLowerCase();
+        if (cellValue.includes(searchLower)) {
+          matches.push({ rowIndex, columnId: col.id });
+        }
+      });
+    });
 
-  // setSearchMatches(matches);
-  // }, [searchTerm, rowDataTransformed, columns]);
+      setSearchMatches(matches);
+  }, [debouncedSearchTerm, rowDataTransformed, columns]);
 
   const tableInstance = useReactTable({
     data: rowDataTransformed,
@@ -523,12 +548,23 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     overscan: 10,
   });
 
-  // if (isLoading || !table || !rowData) return <LoadingPage />;
-  if (isLoading || !table || !rowData) {
-    onChangeLoadingState(true);
-  } else {
-    onChangeLoadingState(false)
-  };
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [rowDataTransformed, rowVirtualizer]);
+
+
+  const isDataLoading = isLoading || isRowsLoading || (isSearching && searchTerm.trim().length > 0);
+  
+  useEffect(() => {
+    onChangeLoadingState(isDataLoading);
+  }, [isDataLoading, onChangeLoadingState]);
+
+  // Show loading page only if we don't have any data yet
+  if (isDataLoading && (!table || !rowData)) {
+    return <LoadingPage />;
+  }
+
+  
 
 
   return (

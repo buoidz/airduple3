@@ -1,7 +1,8 @@
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, Question } from "phosphor-react";
+import { Bell, Question, SignOut } from "phosphor-react";
+import { UserMenu } from "../UserMenu";
 
 
 export function TableSideBar() {
@@ -29,15 +30,9 @@ export function TableSideBar() {
         {/* <div className="w-6 border-b border-gray-300 mt-2" /> */}
         <Question size={16}/>
         <Bell size={16} />
-        <button>
-          <Image 
-            src={user.imageUrl}
-            alt="Profile"
-            width={24}
-            height={24}
-            className="h-6 w-6 rounded-full cursor-pointer"
-          />
-        </button>
+
+        <UserMenu size="sm" position="right-up"/>
+
 
       </div>
     </aside>

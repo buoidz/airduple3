@@ -5,6 +5,7 @@ import { HomeTopNav } from "./homeTopNav";
 import { HomeSideBar } from "./homeSideBar";
 import { HomeMainContent } from "./homeMainContent";
 import { SignInButton, useUser } from "@clerk/nextjs";
+import { Outside } from "../outside";
 
 export function HomeClient() {
   const { isLoaded: userLoaded, isSignedIn } = useUser();
@@ -29,9 +30,7 @@ export function HomeClient() {
           </div>
         </>
         ) : (
-        <div className="border-b border-gray-200">
-          <SignInButton />
-        </div>
+        <Outside />
       )}
     </>
   );

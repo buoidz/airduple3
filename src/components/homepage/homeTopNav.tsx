@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, Search, HelpCircle, Bell, Plus, ChevronDown } from "lucide-react";
+import { UserMenu } from "../UserMenu";
 
 export function HomeTopNav() {
   const { user, isSignedIn } = useUser();
@@ -81,16 +82,8 @@ export function HomeTopNav() {
 
 
           {/* User Menu */}
-          <div className="relative">
-            <button className="flex items-center gap-2 p-2 cursor-pointer">
-              <Image 
-                src={user.imageUrl}
-                alt="Profile"
-                width={36}
-                height={36}
-                className="h-8 w-8 rounded-full cursor-pointer"
-              />
-            </button>
+          <div className="relative p-2">
+            <UserMenu />
           </div>
         </div>
       </div>
