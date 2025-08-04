@@ -1,12 +1,12 @@
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, Question, SignOut } from "phosphor-react";
+import { Bell, Question } from "phosphor-react";
 import { UserMenu } from "../UserMenu";
 
 
 export function TableSideBar() {
-  const { user, isSignedIn } = useUser();
+  const { user } = useUser();
 
   if (!user) return <div>No user info</div>;
 

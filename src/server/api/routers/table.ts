@@ -395,84 +395,146 @@ const sortSchema = z.object({
         }
       }
 
-      // Add filter conditions
+      // // Add filter conditions
+      // for (const filter of filters) {
+      //   const column = table.columns.find(c => c.id === filter.columnId);
+      //   if (!column) continue;
+
+      //   const filterCondition: Prisma.RowWhereInput = {
+      //     cells: {
+      //       some: {
+      //         columnId: filter.columnId,
+      //       }
+      //     }
+      //   };
+
+      //   if (column.type === 'TEXT') {
+      //     switch (filter.type) {
+      //       case 'equals':
+      //         (filterCondition.cells as any).some.textValue = {
+      //           equals: filter.value,
+      //           mode: 'insensitive'
+      //         };
+      //         break;
+      //       case 'notEquals':
+      //         (filterCondition.cells as any).some.textValue = {
+      //           not: {
+      //             equals: filter.value,
+      //             mode: 'insensitive'
+      //           }
+      //         };
+      //         break;
+      //       case 'contains':
+      //         (filterCondition.cells as any).some.textValue = {
+      //           contains: filter.value,
+      //           mode: 'insensitive'
+      //         };
+      //         break;
+      //       case 'notContains':
+      //         whereConditions.push({
+      //           NOT: {
+      //             cells: {
+      //               some: {
+      //                 columnId: filter.columnId,
+      //                 textValue: {
+      //                   contains: filter.value,
+      //                   mode: 'insensitive'
+      //                 }
+      //               }
+      //             }
+      //           }
+      //         });
+      //         continue; // Skip adding the regular condition
+      //     }
+      //   } else if (column.type === 'NUMBER') {
+      //     const numValue = Number(filter.value);
+      //     if (isNaN(numValue)) continue;
+
+      //     switch (filter.type) {
+      //       case 'equals':
+      //         (filterCondition.cells as any).some.numberValue = numValue;
+      //         break;
+      //       case 'notEquals':
+      //         (filterCondition.cells as any).some.numberValue = {
+      //           not: numValue
+      //         };
+      //         break;
+      //       case 'greaterThan':
+      //         (filterCondition.cells as any).some.numberValue = {
+      //           gt: numValue
+      //         };
+      //         break;
+      //       case 'lessThan':
+      //         (filterCondition.cells as any).some.numberValue = {
+      //           lt: numValue
+      //         };
+      //         break;
+      //     }
+      //   }
+
+      //   whereConditions.push(filterCondition);
+      // }
+
       for (const filter of filters) {
-        const column = table.columns.find(c => c.id === filter.columnId);
+        const column = table.columns.find((c) => c.id === filter.columnId);
         if (!column) continue;
 
-        const filterCondition: Prisma.RowWhereInput = {
-          cells: {
-            some: {
-              columnId: filter.columnId,
-            }
-          }
-        };
-
         if (column.type === 'TEXT') {
-          switch (filter.type) {
-            case 'equals':
-              (filterCondition.cells as any).some.textValue = {
-                equals: filter.value,
-                mode: 'insensitive'
-              };
-              break;
-            case 'notEquals':
-              (filterCondition.cells as any).some.textValue = {
-                not: {
-                  equals: filter.value,
-                  mode: 'insensitive'
-                }
-              };
-              break;
-            case 'contains':
-              (filterCondition.cells as any).some.textValue = {
-                contains: filter.value,
-                mode: 'insensitive'
-              };
-              break;
-            case 'notContains':
-              whereConditions.push({
-                NOT: {
-                  cells: {
-                    some: {
-                      columnId: filter.columnId,
-                      textValue: {
-                        contains: filter.value,
-                        mode: 'insensitive'
-                      }
-                    }
-                  }
-                }
-              });
-              continue; // Skip adding the regular condition
+          const textFilterMap: Record<string, Prisma.StringFilter> = {
+            equals: { equals: filter.value, mode: 'insensitive' },
+            notEquals: { not: filter.value, mode: 'insensitive' },
+            contains: { contains: filter.value, mode: 'insensitive' },
+          };
+
+          if (filter.type === 'notContains') {
+            whereConditions.push({
+              NOT: {
+                cells: {
+                  some: {
+                    columnId: filter.columnId,
+                    textValue: {
+                      contains: filter.value,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              },
+            });
+            continue;
+          }
+
+          if (textFilterMap[filter.type]) {
+            whereConditions.push({
+              cells: {
+                some: {
+                  columnId: filter.columnId,
+                  textValue: textFilterMap[filter.type],
+                },
+              },
+            });
           }
         } else if (column.type === 'NUMBER') {
           const numValue = Number(filter.value);
           if (isNaN(numValue)) continue;
 
-          switch (filter.type) {
-            case 'equals':
-              (filterCondition.cells as any).some.numberValue = numValue;
-              break;
-            case 'notEquals':
-              (filterCondition.cells as any).some.numberValue = {
-                not: numValue
-              };
-              break;
-            case 'greaterThan':
-              (filterCondition.cells as any).some.numberValue = {
-                gt: numValue
-              };
-              break;
-            case 'lessThan':
-              (filterCondition.cells as any).some.numberValue = {
-                lt: numValue
-              };
-              break;
+          const numberFilterMap: Record<string, Prisma.FloatNullableFilter> = {
+            equals: { equals: numValue },
+            notEquals: { not: numValue },
+            greaterThan: { gt: numValue },
+            lessThan: { lt: numValue },
+          };
+
+          if (numberFilterMap[filter.type]) {
+            whereConditions.push({
+              cells: {
+                some: {
+                  columnId: filter.columnId,
+                  numberValue: numberFilterMap[filter.type],
+                },
+              },
+            });
           }
         }
-
-        whereConditions.push(filterCondition);
       }
 
       // Build the final where clause
@@ -501,7 +563,7 @@ const sortSchema = z.object({
       }
 
       // Execute the main query
-      let queryOptions: Prisma.RowFindManyArgs = {
+      const queryOptions: Prisma.RowFindManyArgs = {
         where: whereClause,
         include: {
           cells: {
@@ -521,7 +583,7 @@ const sortSchema = z.object({
       }
       
 
-      let rows = await db.row.findMany(queryOptions) as (Row & {
+      const rows = await db.row.findMany(queryOptions) as (Row & {
         cells: (Cell & { column: Column })[]
       })[];
 

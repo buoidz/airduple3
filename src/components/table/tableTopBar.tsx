@@ -71,7 +71,7 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
   });
 
   const handleAddRows = () => {
-      addRowsMutation.mutate({
+      void addRowsMutation.mutate({
         tableId,
         rowCount: 15000,  // change back to 15k
       });
@@ -100,7 +100,7 @@ const HideFieldsMenu = ({ columns, columnVisibility, setColumnVisibility }: Hide
     <MenuWrapper label="Hide fields" icon={<EyeOff className="h-4 w-4" />}>
       <div className="p-2">
         {columns.map((col) => (
-            <label className="flex items-center justify-between w-full px-2 py-1 rounded-sm text-sm cursor-pointer">
+            <label key={col.key} className="flex items-center justify-between w-full px-2 py-1 rounded-sm text-sm cursor-pointer">
               <label className="inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -552,12 +552,6 @@ const SearchMenu = ({ searchTerm, setSearchTerm, searchMatchCount }: SearchMenuP
 
 // Main TableTopBar Component
 const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sorting, setColumnVisibility, columnVisibility, setSearchTerm, searchTerm, searchMatchCount, tableId }: TableTopBarProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    setColumnFilters([{ id: 'name', value }]);
-  };
 
   return (
     <div className="flex items-center justify-between w-full p-2 sticky top-0 z-10 bg-white border-b border-gray-300">

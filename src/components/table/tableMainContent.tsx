@@ -8,21 +8,9 @@ import TableTopBar from "./tableTopBar";
 import { LoadingPage } from "../loadingpage";
 
 // Types
-interface RowData {
-  [key: string]: string | number | null;
-}
+type RowData = Record<string, string | number | null>;
+
 type FilterType = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan';
-
-interface ApiFilter {
-  columnId: string;
-  type: FilterType;
-  value: string;
-}
-
-interface ApiSort {
-  columnId: string;
-  direction: 'asc' | 'desc';
-}
 
 
 interface EditableCellProps {
@@ -57,7 +45,7 @@ function EditableCell({ initialValue, tableId, rowIndex, columnId, isSearchMatch
         
         // Reset to idle after showing success briefly
         setTimeout(() => setStatus('idle'), 1500);
-      } catch (error) {
+      } catch (_error) {
         setStatus('error');
         setTimeout(() => setStatus('idle'), 2000);
       }
@@ -411,8 +399,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         //   }
         // },
         cell: (props: CellContext<RowData, unknown>) => {
-          const cellValue = String(props.getValue() ?? "");
-          // Check if this cell is in the searchMatches array
+          const cellValue = props.getValue() != null ? String(props.getValue()) : ""; 
           const isSearchMatch = searchMatches.some(
             (match) => match.rowIndex === props.row.index && match.columnId === props.column.id
           );

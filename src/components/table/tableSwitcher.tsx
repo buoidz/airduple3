@@ -1,7 +1,6 @@
 import { api } from "~/utils/api";
 import { useParams, useRouter } from "next/navigation";
 import clsx from "clsx";
-import { useStatStyles } from "@chakra-ui/react";
 import { Menu, MenuButton, MenuItems } from "@headlessui/react";
 import { useState } from "react";
 
@@ -23,7 +22,7 @@ export function TableSwitcher() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const createTableMutation = api.workspace.createTableDefault.useMutation({
-    onSuccess: (newTable) => {
+    onSuccess: () => {
       setTableName('');
       utils.workspace.getTablesInWorkspace.invalidate();
 
@@ -35,7 +34,7 @@ export function TableSwitcher() {
 
   const handleCreateTable = (workspaceId: string) => {
     if (tableName.trim() && !createTableMutation.isPending) {
-      createTableMutation.mutate({ workspaceId, name: tableName.trim() });
+      void createTableMutation.mutate({ workspaceId, name: tableName.trim() });
       setIsMenuOpen(false);
     }
   };
