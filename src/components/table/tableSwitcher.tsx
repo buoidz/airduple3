@@ -32,9 +32,9 @@ export function TableSwitcher() {
     }
   });
 
-  const handleCreateTable = (workspaceId: string) => {
+  const handleCreateTable = async (workspaceId: string) => {
     if (tableName.trim() && !createTableMutation.isPending) {
-      void createTableMutation.mutate({ workspaceId, name: tableName.trim() });
+      await createTableMutation.mutate({ workspaceId, name: tableName.trim() });
       setIsMenuOpen(false);
     }
   };

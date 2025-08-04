@@ -130,9 +130,9 @@ function AddColumnMenu({
     },
   });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (columnName.trim() && selectedType) {
-      void addColumn.mutate({ tableId, name: columnName, type: selectedType });
+      await addColumn.mutate({ tableId, name: columnName, type: selectedType });
       setSelectedType(null);
       setColumnName('');
       setIsMenuOpen(false);
@@ -483,8 +483,8 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     },
   });
 
-  const handleAddRow = () => {
-    void addRowMutation.mutate({
+  const handleAddRow = async () => {
+    await addRowMutation.mutate({
       tableId,
     });
   };

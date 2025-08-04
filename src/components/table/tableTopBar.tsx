@@ -70,8 +70,8 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
     },
   });
 
-  const handleAddRows = () => {
-      void addRowsMutation.mutate({
+  const handleAddRows = async () => {
+      await addRowsMutation.mutate({
         tableId,
         rowCount: 15000,  // change back to 15k
       });
