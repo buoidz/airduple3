@@ -8,8 +8,9 @@ import TableTopBar from "./tableTopBar";
 import { LoadingPage } from "../loadingpage";
 
 // Types
-type RowData = Record<string, any>;
-
+interface RowData {
+  [key: string]: string | number | null;
+}
 type FilterType = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan';
 
 interface ApiFilter {
@@ -143,7 +144,7 @@ function AddColumnMenu({
 
   const handleCreate = () => {
     if (columnName.trim() && selectedType) {
-      addColumn.mutate({ tableId, name: columnName, type: selectedType });
+      void addColumn.mutate({ tableId, name: columnName, type: selectedType });
       setSelectedType(null);
       setColumnName('');
       setIsMenuOpen(false);
@@ -296,34 +297,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
 
   const { data: table, isLoading } = api.table.getById.useQuery({ tableId });
 
-  // const { data: rowData, fetchNextPage, hasNextPage, isFetchingNextPage } = api.table.getRows.useInfiniteQuery(
-  //   { tableId, limit: 1000 },
-  //   {
-  //     getNextPageParam: (lastPage) => lastPage.nextCursor,
-  //     select: (data) => ({
-  //       pages: data.pages.flatMap((page) => page.rows),
-  //       pageParams: data.pageParams,
-  //     }),
-  //   }
-  // );
-
-
-  // Convert React Table filters and sorts to API format
-  const apiFilters: ApiFilter[] = useMemo(() => {
-    return debouncedFilters.map(filter => ({
-      columnId: filter.id,
-      type: (filter.value as { type: FilterType; value: string }).type,
-      value: (filter.value as { type: FilterType; value: string }).value,
-    })).filter(f => f.type && f.value);
-  }, [debouncedFilters]);
-
-  const apiSort: ApiSort[] = useMemo(() => {
-    return sortBy.map(sort => ({
-      columnId: sort.id,
-      direction: sort.desc ? 'desc' : 'asc'
-    }));
-  }, [sortBy]);
-
   // Use the new API endpoint with server-side operations
   const { 
     data: rowData, 
@@ -331,7 +304,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     hasNextPage, 
     isFetchingNextPage,
     isLoading: isRowsLoading,
-    isFetching,
   } = api.table.getRowsWithOperations.useInfiniteQuery(
     { 
       tableId, 
@@ -352,7 +324,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
       select: (data) => ({
         pages: data.pages.flatMap((page) => page.rows),
         pageParams: data.pageParams,
-        totalCount: data.pages[0]?.totalCount || 0
+        totalCount: data.pages[0]?.totalCount ?? 0
       }),
       enabled: !!tableId,
     }
@@ -403,7 +375,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         //   const filter = filterValue.value;
         //   const isText = col.type === 'TEXT';
           
-        //   if (!filterValue.type || !filter) return true; // No filter applied
+        //   if (!filterValue.type ?? !filter) return true; // No filter applied
 
         //   if (isText) {
         //     const rowValue = String(value).toLowerCase();
@@ -423,7 +395,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         //   } else {
         //     const rowValue = Number(value);
         //     const filterNum = Number(filter);
-        //     if (isNaN(rowValue) || isNaN(filterNum)) return true; // Skip invalid numbers
+        //     if (isNaN(rowValue) ?? isNaN(filterNum)) return true; // Skip invalid numbers
         //     switch (filterValue.type) {
         //       case 'equals':
         //         return rowValue === filterNum; // Uses equals logic
@@ -484,7 +456,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
 
     rowDataTransformed.forEach((row, rowIndex) => {
       columns.forEach((col) => {
-        const cellValue = String(row[col.id] || '').toLowerCase();
+        const cellValue = String(row[col.id] ?? '').toLowerCase();
         if (cellValue.includes(searchLower)) {
           matches.push({ rowIndex, columnId: col.id });
         }
@@ -525,7 +497,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   });
 
   const handleAddRow = () => {
-    addRowMutation.mutate({
+    void addRowMutation.mutate({
       tableId,
     });
   };
@@ -543,7 +515,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
           hasNextPage &&
           !isFetchingNextPage
         ) {
-          fetchNextPage();
+          void fetchNextPage();
         }
       }
     },
@@ -554,7 +526,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   }, [rowDataTransformed, rowVirtualizer]);
 
 
-  const isDataLoading = isLoading || isRowsLoading || (isSearching && searchTerm.trim().length > 0);
+  const isDataLoading = isLoading ?? isRowsLoading ?? (isSearching && searchTerm.trim().length > 0);
   
   useEffect(() => {
     onChangeLoadingState(isDataLoading);
