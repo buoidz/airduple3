@@ -1,7 +1,4 @@
-import { api } from "~/utils/api";
-import { useParams } from "next/navigation";
-import { flexRender, getCoreRowModel, useReactTable, type CellContext } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { TableSideBar } from "./tableSideBar";
 import { TableTopNav } from "./tableTopNav";
 import { TableMainContent } from "./tableMainContent";

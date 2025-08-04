@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { ClockCounterClockwise } from "phosphor-react";
 import { api } from "~/utils/api";
-import { LoadingPage, LoadingSpinner } from "../loadingpage";
+import { LoadingSpinner } from "../loadingpage";
 
 
 export function TableTopNav({ loadingState }: { loadingState: boolean }) {

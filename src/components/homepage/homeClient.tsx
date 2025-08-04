@@ -1,10 +1,7 @@
-"use client";
-
-// import { api } from "~/trpc/server";
 import { HomeTopNav } from "./homeTopNav";
 import { HomeSideBar } from "./homeSideBar";
 import { HomeMainContent } from "./homeMainContent";
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { Outside } from "../outside";
 
 export function HomeClient() {

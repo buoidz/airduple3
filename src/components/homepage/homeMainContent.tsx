@@ -1,8 +1,14 @@
 import { api } from "~/utils/api";
 import Link from "next/link";
 import { LoadingPage } from "../loadingpage";
-import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
+import { Menu, MenuButton, MenuItems } from "@headlessui/react";
 import { useState } from "react";
+
+type Workspace = {
+  id: string;
+  name: string;
+  ables: Array<{ id: string; name: string }>;
+};
 
 function AddWorkspaceButton() {
   const utils = api.useUtils();
@@ -63,7 +69,7 @@ function AddWorkspaceButton() {
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleCreateWorkspace()}
-                  disabled={createTable.isPending || !workspaceName.trim()}
+                  disabled={createTable.isPending ?? !workspaceName.trim()}
                   className="px-3 py-1 bg-blue-600 text-white text-xs rounded disabled:opacity-50 flex items-center space-x-1"
                 >
                   {createTable.isPending ? (
@@ -89,7 +95,7 @@ export function HomeMainContent() {
 
   const [tableName, setTableName] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [optimisticTables, setOptimisticTables] = useState<{[workspaceId: string]: Array<{id: string, name: string, isOptimistic: boolean}>}>({});
+  const [optimisticTables, setOptimisticTables] = useState<Record<string, Array<{ id: string, name: string, isOptimistic: boolean }>>>({});
 
   const { data: workspaces, isLoading: workspaceLoading } = api.workspace.getAll.useQuery();
 
@@ -100,7 +106,7 @@ export function HomeMainContent() {
       setOptimisticTables(prev => ({
         ...prev,
         [workspaceId]: [
-          ...(prev[workspaceId] || []),
+          ...(prev[workspaceId] ?? []),
           { id: tempId, name, isOptimistic: true }
         ]
       }));
@@ -113,7 +119,7 @@ export function HomeMainContent() {
       if (context) {
         setOptimisticTables(prev => ({
           ...prev,
-          [context.workspaceId]: prev[context.workspaceId]?.filter(t => t.id !== context.tempId) || []
+          [context.workspaceId]: prev[context.workspaceId]?.filter(t => t.id !== context.tempId) ?? []
         }));
       }
     },
@@ -124,17 +130,12 @@ export function HomeMainContent() {
       if (context) {
         setOptimisticTables(prev => ({
           ...prev,
-          [context.workspaceId]: prev[context.workspaceId]?.filter(t => t.id !== context.tempId) || []
+          [context.workspaceId]: prev[context.workspaceId]?.filter(t => t.id !== context.tempId) ?? []
         }));
       }
     }
   });
 
-  const createWorkspace = api.workspace.create.useMutation({
-    onSuccess: async () => {
-      await utils.workspace.getAll.invalidate();
-    },
-  });
 
   const handleCreateTable = (workspaceId: string) => {
     if (tableName.trim()) {
@@ -145,9 +146,9 @@ export function HomeMainContent() {
   };
 
   // Combine real tables with optimistic ones
-  const getTablesForWorkspace = (workspace: any) => {
-    const realTables = workspace.tables || [];
-    const optimisticTablesForWorkspace = optimisticTables[workspace.id] || [];
+  const getTablesForWorkspace = (workspace: Workspace) => {
+    const realTables = workspace.tables ?? [];
+    const optimisticTablesForWorkspace = optimisticTables[workspace.id] ?? [];
     return [...realTables, ...optimisticTablesForWorkspace];
   };
 
@@ -225,7 +226,7 @@ export function HomeMainContent() {
                         <div className="flex space-x-2">
                           <button
                             onClick={() => handleCreateTable(workspace.id)}
-                            disabled={createTable.isPending || !tableName.trim()}
+                            disabled={createTable.isPending ?? !tableName.trim()}
                             className="px-3 py-1 bg-blue-600 text-white text-xs rounded disabled:opacity-50 flex items-center space-x-1"
                           >
                             {createTable.isPending ? (

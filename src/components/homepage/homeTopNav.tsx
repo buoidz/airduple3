@@ -1,13 +1,4 @@
-"use client";
-
-import {
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-  useUser,
-} from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 
 // app/header.tsx
 import Link from "next/link";
@@ -23,16 +14,6 @@ export function HomeTopNav() {
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-2xs sticky top-0">
-      {/* <SignedOut>
-        <SignInButton />
-        <SignUpButton />
-      </SignedOut>
-      <SignedIn>
-        <UserButton />
-      </SignedIn> */}
-
-
-
       <div className="flex items-center justify-between px-3 py-1">
         {/* Sidebar and Logo and Brand */}
         <div className="flex items-center">
@@ -45,7 +26,6 @@ export function HomeTopNav() {
               alt="airtable logo"
               width={50}
               height={50}
-              // className="m-0 p-0"
             />
             <span className="text-xl font-semibold text-gray-900">Airtable</span>
           </Link>

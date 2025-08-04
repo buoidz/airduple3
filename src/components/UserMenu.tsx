@@ -61,7 +61,7 @@ export function UserMenu({
         {/* User Info */}
         <div className="px-4 py-3">
           <p className="text-sm font-medium text-gray-900">
-            {user.fullName || user.firstName || "User"}
+            {user.fullName ?? user.firstName ?? "User"}
           </p>
           <p className="text-xs text-gray-500">
             {user.primaryEmailAddress?.emailAddress}
