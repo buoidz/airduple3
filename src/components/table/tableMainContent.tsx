@@ -1,11 +1,11 @@
 import { useParams } from "next/navigation";
-import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type CellContext, type ColumnFiltersState, type Row, type SortingState, type VisibilityState } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable, type CellContext, type ColumnFiltersState, type SortingState, type VisibilityState } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { api } from "~/utils/api";
 import TableTopBar from "./tableTopBar";
-import { LoadingPage, LoadingSpinner } from "../loadingpage";
+import { LoadingPage } from "../loadingpage";
 
 // Types
 type RowData = Record<string, any>;

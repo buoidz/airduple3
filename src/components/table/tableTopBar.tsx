@@ -1,5 +1,5 @@
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/react';
-import { ArrowDownUp, ChevronDownIcon, EyeOff, List, ListFilter, PaintBucket, ExternalLink, Search, XIcon, PlusIcon, Grid, Table2 } from 'lucide-react';
+import { ArrowDownUp, ChevronDownIcon, EyeOff, List, ListFilter, PaintBucket, ExternalLink, Search, XIcon, PlusIcon, Table2 } from 'lucide-react';
 import { useState } from 'react';
 import type { ColumnFiltersState, ColumnSort, SortingState, VisibilityState } from '@tanstack/react-table';
 import { api } from '~/utils/api';
@@ -47,7 +47,7 @@ const MenuWrapper = ({ label, icon, children, className }: MenuWrapperProps) => 
       {icon}
       <span className="ml-2">{label}</span>
     </MenuButton>
-    <MenuItems className={`absolute z-10 w-48 rounded-md border border-gray-200 shadow-lg bg-white ${className || ''}`}>
+    <MenuItems className={`absolute z-10 w-48 rounded-md border border-gray-200 shadow-lg bg-white ${className ?? ''}`}>
       {children}
     </MenuItems>
   </Menu>
@@ -226,9 +226,9 @@ interface FilterMenuProps {
 const FilterMenu = ({ columns, setColumnFilters, columnFilters }: FilterMenuProps) => {
   const mappedFilters: Filter[] = columnFilters.map((f) => ({
     id: f.id,
-    type: (f.value as { type: FilterType; value: string } | undefined)?.type || 
+    type: (f.value as { type: FilterType; value: string } | undefined)?.type ?? 
           (columns.find(col => col.key === f.id)?.type === 'TEXT' ? 'contains' : 'equals'),
-    value: (f.value as { type: FilterType; value: string } | undefined)?.value || ''
+    value: (f.value as { type: FilterType; value: string } | undefined)?.value ?? ''
   }));
 
   const addFilter = () => {
@@ -268,7 +268,7 @@ const FilterMenu = ({ columns, setColumnFilters, columnFilters }: FilterMenuProp
       >
         <ListFilter className="h-4 w-4 mr-1" />
         {columnFilters.length > 0 ? (
-          <span>Filtered by {filteredColumnNames || 'columns'}</span>
+          <span>Filtered by {filteredColumnNames ?? 'columns'}</span>
         ) : (
           <span>Filter</span>
         )}
@@ -418,7 +418,7 @@ const SortMenu = ({ columns, sorting, setSorting }: SortMenuProps) => {
 
   const handleUpdateSort = (index: number, field: 'id' | 'desc', value: string | boolean) => {
     const newSorts = [...sorting];
-    const currentSort = newSorts[index] || { id: columns[0]?.key || 'default', desc: false };
+    const currentSort = newSorts[index] ?? { id: columns[0]?.key ?? 'default', desc: false };
     if (field === 'id' && typeof value === 'string') {
       if (sorting.some((sort, i) => sort.id === value && i !== index)) return;
       newSorts[index] = { ...currentSort, id: value, desc: currentSort.desc ?? false };

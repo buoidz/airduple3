@@ -24,7 +24,7 @@ const sortSchema = z.object({
         z.object({ tableId: z.string() })
       )     
       .query(async ({ ctx, input }) => {
-        const table = ctx.db.table.findUnique({
+        const table = await ctx.db.table.findUnique({
           where: { id: input.tableId },
           include: {
             columns: {
@@ -32,14 +32,6 @@ const sortSchema = z.object({
                 order: 'asc',
               }
             },
-            // rows: {
-            //   orderBy: {
-            //     order: 'asc',
-            //   },
-            //   include: {
-            //     cells: true,
-            //   },
-            // },
           },
         });
 
@@ -256,7 +248,7 @@ const sortSchema = z.object({
           where: { tableId },
           _max: { order: true },
         });
-        const newOrder = (maxOrder._max.order || 0) + 1;
+        const newOrder = (maxOrder._max.order ?? 0) + 1;
 
         // Create row
         const newRow = await ctx.db.row.create({
@@ -487,7 +479,7 @@ const sortSchema = z.object({
       const whereClause: Prisma.RowWhereInput = 
         whereConditions.length > 1 
           ? { AND: whereConditions }
-          : whereConditions[0] || { tableId };
+          : whereConditions[0] ?? { tableId };
 
       // Get total count for pagination info (before applying cursor)
       const totalCount = await db.row.count({
@@ -547,11 +539,11 @@ const sortSchema = z.object({
             let bValue: string | number = '';
 
             if (column.type === 'TEXT') {
-              aValue = aCell?.textValue || '';
-              bValue = bCell?.textValue || '';
+              aValue = aCell?.textValue ?? '';
+              bValue = bCell?.textValue ?? '';
             } else if (column.type === 'NUMBER') {
-              aValue = aCell?.numberValue || 0;
-              bValue = bCell?.numberValue || 0;
+              aValue = aCell?.numberValue ?? 0;
+              bValue = bCell?.numberValue ?? 0;
             }
 
             let comparison = 0;

@@ -1,13 +1,12 @@
 import { useUser } from "@clerk/nextjs";
 
-// app/header.tsx
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, Search, HelpCircle, Bell, Plus, ChevronDown } from "lucide-react";
+import { Menu, Search, HelpCircle, Bell } from "lucide-react";
 import { UserMenu } from "../UserMenu";
 
 export function HomeTopNav() {
-  const { user, isSignedIn } = useUser();
+  const { user } = useUser();
 
   if (!user) return <div>No user info</div>;
 

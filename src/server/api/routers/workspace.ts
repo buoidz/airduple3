@@ -1,5 +1,4 @@
 import { ColumnType } from "@prisma/client";
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, privateProcedure, publicProcedure } from "~/server/api/trpc";
@@ -14,7 +13,7 @@ export const workspaceRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const currentUser = ctx.currentUser.id;
 
-      const workspaces = await ctx.db.workspace.create({
+      await ctx.db.workspace.create({
         data: {
           name: input.name,
           ownerId: currentUser
@@ -74,7 +73,7 @@ export const workspaceRouter = createTRPCRouter({
       const userId = ctx.currentUser.id;
 
       // 1. Create the Table
-      const table = await ctx.db.$transaction(async (tx) => {
+      const table = await ctx.db.$transaction(async () => {
 
         const newTable = await ctx.db.table.create({
           data: {
@@ -85,7 +84,7 @@ export const workspaceRouter = createTRPCRouter({
         });
 
         // 2. Create two columns: name & note
-        const columns = await ctx.db.column.createMany({
+        await ctx.db.column.createMany({
           data: [
             { tableId: newTable.id, name: "Name", type: ColumnType.TEXT, order: 0 },
             { tableId: newTable.id, name: "Note", type: ColumnType.TEXT, order: 1 }

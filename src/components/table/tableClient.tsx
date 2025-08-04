@@ -3,11 +3,9 @@ import { TableSideBar } from "./tableSideBar";
 import { TableTopNav } from "./tableTopNav";
 import { TableMainContent } from "./tableMainContent";
 import { TableSwitcher } from "./tableSwitcher";
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { Outside } from "../outside";
 
-
-type RowData = Record<string, any>;
 
 export function TableClient() {
   const [loadingState, setLoadingState] = useState(true);
