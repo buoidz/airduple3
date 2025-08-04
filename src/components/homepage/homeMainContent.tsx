@@ -4,10 +4,16 @@ import { LoadingPage } from "../loadingpage";
 import { Menu, MenuButton, MenuItems } from "@headlessui/react";
 import { useState } from "react";
 
+type Table = {
+  id: string;
+  name: string;
+  isOptimistic?: boolean;
+};
+
 type Workspace = {
   id: string;
   name: string;
-  ables: Array<{ id: string; name: string }>;
+  tables: Table[];
 };
 
 function AddWorkspaceButton() {
