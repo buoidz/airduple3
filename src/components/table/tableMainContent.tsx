@@ -124,15 +124,17 @@ function AddColumnMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const addColumn = api.table.addColumn.useMutation({
-    onSuccess: () => {
-      utils.table.getById.invalidate({ tableId }),
-      utils.table.getRows.invalidate({ tableId })
+    onSuccess: async () => {
+      await Promise.all([
+        utils.table.getById.invalidate({ tableId }),
+        utils.table.getRows.invalidate({ tableId }),
+      ]);
     },
   });
 
   const handleCreate = async () => {
     if (columnName.trim() && selectedType) {
-      await addColumn.mutate({ tableId, name: columnName, type: selectedType });
+      await addColumn.mutateAsync({ tableId, name: columnName, type: selectedType });
       setSelectedType(null);
       setColumnName('');
       setIsMenuOpen(false);
@@ -474,8 +476,8 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
 
 
   const addRowMutation = api.table.addRow.useMutation({
-    onSuccess: () => {
-      utils.table.getRows.invalidate({ tableId });
+    onSuccess: async () => {
+      await utils.table.getRows.invalidate({ tableId });
     },
     onError: (error) => {
       console.error('Error adding row:', error);
@@ -484,7 +486,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   });
 
   const handleAddRow = async () => {
-    await addRowMutation.mutate({
+    await addRowMutation.mutateAsync({
       tableId,
     });
   };

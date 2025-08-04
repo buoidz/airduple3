@@ -61,8 +61,8 @@ interface AddFakeRowMenuProps {
 const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
   const utils = api.useUtils();
   const addRowsMutation = api.table.addFakeRows.useMutation({
-    onSuccess: () => {
-      utils.table.getById.invalidate({ tableId });
+    onSuccess: async () => {
+      await utils.table.getById.invalidate({ tableId });
     },
   onError: (error) => {
       console.error('Error adding rows:', error);
@@ -71,7 +71,7 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
   });
 
   const handleAddRows = async () => {
-      await addRowsMutation.mutate({
+      await addRowsMutation.mutateAsync({
         tableId,
         rowCount: 15000,  // change back to 15k
       });

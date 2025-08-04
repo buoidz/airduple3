@@ -22,9 +22,9 @@ export function TableSwitcher() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const createTableMutation = api.workspace.createTableDefault.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       setTableName('');
-      utils.workspace.getTablesInWorkspace.invalidate();
+      await utils.workspace.getTablesInWorkspace.invalidate();
 
     },
     onError: (error) => {
@@ -34,7 +34,7 @@ export function TableSwitcher() {
 
   const handleCreateTable = async (workspaceId: string) => {
     if (tableName.trim() && !createTableMutation.isPending) {
-      await createTableMutation.mutate({ workspaceId, name: tableName.trim() });
+      await createTableMutation.mutateAsync({ workspaceId, name: tableName.trim() });
       setIsMenuOpen(false);
     }
   };
@@ -96,7 +96,7 @@ export function TableSwitcher() {
                         e.stopPropagation();
                       }
                       if (e.key === 'Enter') {
-                        handleCreateTable(workspaceId);
+                        void handleCreateTable(workspaceId);
                       }
                     }}
                     placeholder="Enter table name..."
