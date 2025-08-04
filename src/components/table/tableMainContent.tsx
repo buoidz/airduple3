@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { api } from "~/utils/api";
-import Filter from "./filter";
 import TableTopBar from "./tableTopBar";
 import { LoadingPage, LoadingSpinner } from "../loadingpage";
 
@@ -266,15 +265,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   const [searchMatches, setSearchMatches] = useState<{ rowIndex: number; columnId: string }[]>([]);
 
 
-  // const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
-  // useEffect(() => {
-  //   const handler = setTimeout(() => {
-  //     setDebouncedSearchTerm(searchTerm);
-  //   }, 500); 
-
-  //   return () => clearTimeout(handler);
-  // }, [searchTerm]);
-
   const [debouncedFilters, setDebouncedFilters] = useState<ColumnFiltersState>([]);
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -449,16 +439,15 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         //   }
         // },
         cell: (props: CellContext<RowData, unknown>) => {
+          const cellValue = String(props.getValue() ?? "");
+          // Check if this cell is in the searchMatches array
           const isSearchMatch = searchMatches.some(
-            match => {
-              const isMatch = match.rowIndex === props.row.index && match.columnId === props.column.id;
-              return isMatch;
-            }
+            (match) => match.rowIndex === props.row.index && match.columnId === props.column.id
           );
-          
+
           return (
             <EditableCell
-              initialValue={String(props.getValue() ?? "")}
+              initialValue={cellValue}
               tableId={tableId}
               rowIndex={props.row.index}
               columnId={props.column.id}
@@ -467,7 +456,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
           );
         },
       })),
-    [columns, tableId]
+    [columns, tableId, searchMatches]
   );
 
   const rowDataTransformed = useMemo(
@@ -544,8 +533,20 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   const rowVirtualizer = useVirtualizer({
     count: tableInstance.getRowModel().rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 36, // Approx row height
+    estimateSize: () => 36, // Approximate row height
     overscan: 10,
+    onChange: () => {
+      if (parentRef.current) {
+        const { scrollHeight, scrollTop, clientHeight } = parentRef.current;
+        if (
+          scrollHeight - scrollTop - clientHeight < 200 && // Trigger when near bottom
+          hasNextPage &&
+          !isFetchingNextPage
+        ) {
+          fetchNextPage();
+        }
+      }
+    },
   });
 
   useEffect(() => {
