@@ -73,7 +73,7 @@ const AddFakeRowMenu = ({ tableId }: AddFakeRowMenuProps) => {
   const handleAddRows = async () => {
       await addRowsMutation.mutateAsync({
         tableId,
-        rowCount: 15000,  // change back to 15k
+        rowCount: 15000, 
       });
     };
 
@@ -120,9 +120,7 @@ const HideFieldsMenu = ({ columns, columnVisibility, setColumnVisibility }: Hide
                 <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-200 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 dark:peer-checked:bg-green-600"></div>
                 <span className="ms-3 mb-1 text-sm font-medium text-gray-900">{col.label}</span>
 
-                {/* <span className="slider"></span> */}
               </label>
-              {/* <span>{col.label}</span>  */}
             </label>
         ))}
       </div>
@@ -560,7 +558,6 @@ const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sor
 
         <Table2 className="h-4 w-4" color='blue' />
         <span className='text-xs font-semibold'>Grid view</span>
-        {/* <MenuWrapper label="Records" icon={<BarChart className="h-4 w-4" />} /> */}
       </div>
 
       <div className="flex items-center space-x-2 px-1">
@@ -572,7 +569,6 @@ const TableTopBar = ({ columns, setColumnFilters, columnFilters, setSorting, sor
         <MenuWrapper label="Color" icon={<PaintBucket className="h-4 w-4" />} />
         <MenuWrapper label="" icon={<List className="h-4 w-4" />} className="w-48" />
         <MenuWrapper label="Share and syncs" icon={<ExternalLink className="h-4 w-4" />} />
-        {/* <MenuWrapper label="" icon={<Search className="h-4 w-4" />} className="w-48" /> */}
         <SearchMenu searchTerm={searchTerm} setSearchTerm={setSearchTerm} searchMatchCount={searchMatchCount} />
       </div>
     </div>

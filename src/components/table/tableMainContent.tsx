@@ -32,18 +32,14 @@ function EditableCell({ initialValue, tableId, rowIndex, columnId, isSearchMatch
       setStatus('saving');
     },
     onSuccess: async () => {
-      setStatus('syncing'); // Blue: Saved to server, refreshing UI
+      setStatus('syncing'); 
       
       try {
-        // Wait for BOTH the table data AND row data to refresh
         await Promise.all([
           utils.table.getById.invalidate({ tableId }),
           utils.table.getRowsWithOperations.invalidate({ tableId })
         ]);
-        
-        setStatus('synced'); // Green: Everything is in sync
-        
-        // Reset to idle after showing success briefly
+        setStatus('synced'); 
         setTimeout(() => setStatus('idle'), 1500);
       } catch (_error) {
         setStatus('error');
@@ -320,13 +316,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     }
   );
 
-  // const [cachedRowData, setCachedRowData] = useState<any[]>([]); // Cache for row data
-  // // Update cached data when new data is loaded
-  // useEffect(() => {
-  //   if (rowData?.pages) {
-  //     setCachedRowData(rowData.pages);
-  //   }
-  // }, [rowData]);
 
   const columns = useMemo(
     () => table?.columns.sort((a, b) => a.order - b.order) ?? [],
@@ -334,7 +323,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   );
 
   const rows = useMemo(() => rowData?.pages ?? [], [rowData]);
-  // const rows = useMemo(() => (isFetching && cachedRowData.length > 0 ? cachedRowData : rowData?.pages ?? []), [rowData, isFetching, cachedRowData]);
 
   // Initialize columnVisibility state properly
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -359,47 +347,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         size: 150,
         minSize: 50,
         maxSize: 500,
-        meta: { type: col.type }, // Add meta.type for filter logic
-        // filterFn: (row: Row<RowData>, columnId: string, filterValue: { type: FilterType, value: string }) => {
-        //   const value = row.getValue(columnId);
-        //   const filter = filterValue.value;
-        //   const isText = col.type === 'TEXT';
-          
-        //   if (!filterValue.type ?? !filter) return true; // No filter applied
-
-        //   if (isText) {
-        //     const rowValue = String(value).toLowerCase();
-        //     const filterLower = filter.toLowerCase();
-        //     switch (filterValue.type) {
-        //       case 'equals':
-        //         return rowValue === filterLower; // Uses equalsString logic
-        //       case 'notEquals':
-        //         return rowValue !== filterLower;
-        //       case 'contains':
-        //         return rowValue.includes(filterLower); // Uses includesString logic
-        //       case 'notContains':
-        //         return !rowValue.includes(filterLower);
-        //       default:
-        //         return true;
-        //     }
-        //   } else {
-        //     const rowValue = Number(value);
-        //     const filterNum = Number(filter);
-        //     if (isNaN(rowValue) ?? isNaN(filterNum)) return true; // Skip invalid numbers
-        //     switch (filterValue.type) {
-        //       case 'equals':
-        //         return rowValue === filterNum; // Uses equals logic
-        //       case 'notEquals':
-        //         return rowValue !== filterNum;
-        //       case 'greaterThan':
-        //         return rowValue > filterNum; // Uses inNumberRange logic
-        //       case 'lessThan':
-        //         return rowValue < filterNum;
-        //       default:
-        //         return true;
-        //     }
-        //   }
-        // },
+        meta: { type: col.type },
         cell: (props: CellContext<RowData, unknown>) => {
           const cellValue = props.getValue() != null ? String(props.getValue()) : ""; 
           const isSearchMatch = searchMatches.some(
@@ -467,8 +415,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     onSortingChange: setSortBy,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    // getFilteredRowModel: getFilteredRowModel(),
-    // getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
     manualFiltering: true,
     manualSorting: true,
@@ -494,7 +440,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
   const rowVirtualizer = useVirtualizer({
     count: tableInstance.getRowModel().rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 36, // Approximate row height
+    estimateSize: () => 36,
     overscan: 10,
     onChange: () => {
       if (parentRef.current) {

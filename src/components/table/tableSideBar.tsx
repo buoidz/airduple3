@@ -27,7 +27,6 @@ export function TableSideBar() {
 
       {/* Bottom Icons */}
       <div className="flex flex-col items-center gap-y-4.5">
-        {/* <div className="w-6 border-b border-gray-300 mt-2" /> */}
         <Question size={16}/>
         <Bell size={16} />
 
