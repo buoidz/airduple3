@@ -16,7 +16,9 @@ export function HomeClient() {
       {isSignedIn ? (
         <>
           <div className="flex flex-col h-screen">
-            <HomeTopNav />
+            <nav className="z-50">
+              <HomeTopNav />
+            </nav>
             <div className="flex flex-1">
               <div className="relative group">
                 <HomeSideBar />

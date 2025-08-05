@@ -37,7 +37,7 @@ export function UserMenu({
   }[position];
 
   return (
-    <Menu as="div" className="relative inline-block text-left">
+    <Menu as="div" className="relative inline-block text-left z-50">
       <MenuButton className="focus:outline-none">
         <Image
           src={user.imageUrl}
@@ -53,7 +53,7 @@ export function UserMenu({
 
       <MenuItems
         className={clsx(
-          "absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-2 focus:outline-none",
+          "absolute bg-white rounded-lg shadow-lg border border-gray-200 py-2 focus:outline-none z-50",
           width,
           positionClasses
         )}

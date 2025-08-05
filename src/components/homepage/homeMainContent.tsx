@@ -37,9 +37,9 @@ function AddWorkspaceButton() {
   };
 
   return (
-    <Menu as="div" className="relative">
+    <Menu as="div" className="relative z-10">
       <MenuButton 
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        onClick={() => setIsMenuOpen(true)}
         className="p-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none disabled:opacity-50"
         disabled={createTable.isPending}
       >
