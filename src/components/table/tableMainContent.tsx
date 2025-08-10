@@ -276,7 +276,6 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
 
 
   const utils = api.useUtils();
-
   const parentRef = useRef<HTMLDivElement>(null);
 
 
@@ -307,11 +306,11 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      select: (data) => ({
-        pages: data.pages.flatMap((page) => page.rows),
-        pageParams: data.pageParams,
-        totalCount: data.pages[0]?.totalCount ?? 0
-      }),
+      // select: (data) => ({
+      //   pages: data.pages.flatMap((page) => page.rows),
+      //   pageParams: data.pageParams,
+      //   totalCount: data.pages[0]?.totalCount ?? 0
+      // }),
       enabled: !!tableId,
     }
   );
@@ -322,7 +321,16 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     [table]
   );
 
-  const rows = useMemo(() => rowData?.pages ?? [], [rowData]);
+  // const rows = useMemo(() => rowData?.pages ?? [], [rowData]);
+  // Get flattened rows but keep track of total count
+  const allRows = useMemo(() => {
+    if (!rowData?.pages) return [];
+    return rowData.pages.flatMap(page => page.rows);
+  }, [rowData]);
+
+  const totalCount = useMemo(() => {
+    return rowData?.pages[0]?.totalCount ?? 0;
+  }, [rowData]);
 
   // Initialize columnVisibility state properly
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -370,14 +378,14 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
 
   const rowDataTransformed = useMemo(
     () =>
-      rows.map((row) => {
+      allRows.map((row) => {
         const rowObj: RowData = {};
         for (const cell of row.cells) {
           rowObj[cell.columnId] = cell.textValue ?? cell.numberValue ?? null;
         }
         return rowObj;
       }),
-    [rows]
+    [allRows]
   );
   
 
@@ -437,24 +445,227 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
     });
   };
 
+  // const rowVirtualizer = useVirtualizer({
+  //   count: allRows.length,
+  //   getScrollElement: () => parentRef.current,
+  //   estimateSize: () => 36,
+  //   overscan: 10,
+  //   onChange: () => {
+  //     if (parentRef.current) {
+  //       const { scrollHeight, scrollTop, clientHeight } = parentRef.current;
+
+  //       console.log('Scroll event:', { 
+  //         scrollTop, 
+  //         scrollHeight, 
+  //         clientHeight, 
+  //       });
+
+  //       if (scrollHeight <= clientHeight) return; // Not scrollable yet
+
+  //       if (
+  //         scrollTop + clientHeight >= scrollHeight - 200 && 
+  //         hasNextPage &&
+  //         !isFetchingNextPage
+  //       ) {
+  //         console.log("NOOOOOOOOOOOOOOOO");
+  //         void fetchNextPage();
+  //       }
+  //     }
+  //   },
+  // });
+
+  // useEffect(() => {
+  //   const el = parentRef.current;
+  //   if (!el) return;
+
+  //   const handleScroll = () => {
+  //     const { scrollTop, clientHeight, scrollHeight } = el;
+
+  //     const thresholdRows = 20;
+  //     const thresholdPx = thresholdRows * rowVirtualizer.options.estimateSize();
+
+  //     if (
+  //       scrollTop + clientHeight >= scrollHeight - thresholdPx &&
+  //       hasNextPage &&
+  //       !isFetchingNextPage
+  //     ) {
+  //       fetchNextPage();
+  //     }
+  //   };
+
+  //   el.addEventListener("scroll", handleScroll, { passive: true });
+  //   return () => el.removeEventListener("scroll", handleScroll);
+  // }, [rowVirtualizer, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+
+  // Handle infinite scrolling with scroll event listener
+  // useEffect(() => {
+  //   console.log("YESSSSSSSSSSS");
+  //   const scrollElement = parentRef.current;
+  //   if (!scrollElement) return;
+  //   console.log("YESSSSSSSSSSS2");
+
+  //   const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+  //   const scrollPosition = scrollTop + clientHeight;
+  //   const threshold = scrollHeight - 200; // 200px from bottom
+
+  //   console.log('Scroll event:', { 
+  //     scrollTop, 
+  //     scrollHeight, 
+  //     clientHeight, 
+  //     scrollPosition, 
+  //     threshold
+  //   });
+
+  //   const handleScroll = () => {
+  //     const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+  //     const scrollPosition = scrollTop + clientHeight;
+  //     const threshold = scrollHeight - 200; // 200px from bottom
+
+  //     console.log('Scroll event:', { 
+  //       scrollTop, 
+  //       scrollHeight, 
+  //       clientHeight, 
+  //       scrollPosition, 
+  //       threshold
+  //     });
+
+  //     // Only fetch more if:
+  //     // 1. We're close to the bottom
+  //     // 2. We have more pages to fetch
+  //     // 3. We're not already fetching
+  //     // 4. We have some loaded data already
+  //     if (
+  //       scrollPosition >= threshold &&
+  //       hasNextPage &&
+  //       !isFetchingNextPage &&
+  //       allRows.length > 0
+  //     ) {
+  //       void fetchNextPage();
+  //     }
+  //   };
+    
+  //   scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+  //   return () => scrollElement.removeEventListener('scroll', handleScroll);
+  // }, [hasNextPage, isFetchingNextPage, fetchNextPage, allRows.length, parentRef]);
+
+  
+
   const rowVirtualizer = useVirtualizer({
-    count: tableInstance.getRowModel().rows.length,
+    count: allRows.length, 
     getScrollElement: () => parentRef.current,
     estimateSize: () => 36,
-    overscan: 10,
-    onChange: () => {
-      if (parentRef.current) {
-        const { scrollHeight, scrollTop, clientHeight } = parentRef.current;
-        if (
-          scrollHeight - scrollTop - clientHeight < 200 && // Trigger when near bottom
-          hasNextPage &&
-          !isFetchingNextPage
-        ) {
-          void fetchNextPage();
-        }
-      }
-    },
+    overscan: 20,
+  //   onChange: () => {
+  //     const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse();
+  //         const a = lastItem?.index;
+  //   const b = allRows.length;
+
+  //   console.log(a, b);
+  //   const virtualItems = rowVirtualizer.getVirtualItems();
+  //   const scrollElement = parentRef.current;
+  // console.log({
+  //   lastItemIndex: lastItem?.index,
+  //   allRowsLength: allRows.length,
+  //   hasNextPage,
+  //   isFetchingNextPage,
+  //   virtualItemsCount: virtualItems.length,
+  //   virtualItemIndices: virtualItems.map(item => item.index),
+  //   totalSize: rowVirtualizer.getTotalSize(),
+  //   scrollTop: scrollElement?.scrollTop,
+  //   scrollHeight: scrollElement?.scrollHeight,
+  //   clientHeight: scrollElement?.clientHeight,
+  //   atBottom: scrollElement ? scrollElement.scrollTop + scrollElement.clientHeight >= scrollElement.scrollHeight - 10 : false,
+  // });
+  //     if (
+  //       lastItem &&
+  //       lastItem.index >= allRows.length - 5 && // Trigger 5 rows from the end
+  //       hasNextPage &&
+  //       !isFetchingNextPage
+  //     ) {
+  //       fetchNextPage();
+  //     }
+  //   },
   });
+
+  useEffect(() => {
+    const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse();
+    
+    if (
+      lastItem &&
+      lastItem.index >= allRows.length - 100 &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      allRows.length > 0
+    ) {
+      fetchNextPage();
+    }
+  }, [rowVirtualizer.getVirtualItems(), allRows.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+
+  // useEffect(() => {
+  //   const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse()
+
+  //   const a = lastItem?.index;
+  //   const b = allRows.length;
+
+  //   console.log(a, b);
+
+  //   if (
+  //     lastItem &&
+  //     lastItem.index >= allRows.length - 1 && // last real row
+  //     hasNextPage &&
+  //     !isFetchingNextPage
+  //   ) {
+  //     fetchNextPage();
+  //   }
+  // }, [rowVirtualizer.getVirtualItems(), allRows.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+// useEffect(() => {
+//   console.log("----------------------------");
+//   const scrollElement = parentRef.current;
+//   console.log("Adding scroll listener to:", scrollElement);
+//   const handleScroll = () => {
+//     console.log("Scroll event fired!");
+//     const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse();
+//     // console.log("lastItem.index:", lastItem?.index, "allRows.length:", allRows.length);
+//     if (
+//       lastItem &&
+//       lastItem.index >= allRows.length - 5 &&
+//       hasNextPage &&
+//       !isFetchingNextPage
+//     ) {
+//       console.log("Triggering fetchNextPage");
+//       fetchNextPage();
+//     }
+//   };
+
+//   scrollElement?.addEventListener('scroll', handleScroll);
+//   return () => {
+//     console.log("Removing scroll listener");
+//     scrollElement?.removeEventListener('scroll', handleScroll);
+//   };
+// }, [allRows.length, hasNextPage, isFetchingNextPage, fetchNextPage, rowVirtualizer]);
+
+// useEffect(() => {
+//   console.log("----------------------------");
+//   const scrollElement = parentRef.current;
+//   console.log("Adding scroll listener to:", scrollElement);
+//   const handleScroll = () => {
+//     console.log("Scroll event fired!");
+//   };
+//   scrollElement?.addEventListener('scroll', handleScroll);
+//   return () => {
+//     console.log("Removing scroll listener");
+//     scrollElement?.removeEventListener('scroll', handleScroll);
+//   };
+// }, [rowVirtualizer]);
+
+// useEffect(() => {
+//   console.log("parentRef.current:", parentRef.current);
+//   console.log("Scrollable?", parentRef.current?.scrollHeight, parentRef.current?.clientHeight);
+//   // ...
+// }, [allRows.length, hasNextPage, isFetchingNextPage, fetchNextPage, rowVirtualizer]);
 
   useEffect(() => {
     rowVirtualizer.measure();
@@ -476,7 +687,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
 
 
   return (
-    <div className="w-full h-full overflow-auto">
+    <div className="w-full h-screen">
       <TableTopBar
         columns={columns.map((col) => ({ key: col.id, label: col.name, type: col.type }))}
         setColumnFilters={setColumnFilters}
@@ -491,11 +702,15 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
         tableId={tableId}
       />
 
-      <div ref={parentRef} className="w-full overflow-auto">
+      <div ref={parentRef} className="w-full h-screen overflow-auto">
         <table className="text-left text-sm text-gray-600 font-normal leading-tight border-collapse">
           <thead>
             {tableInstance.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
+                <th 
+                  className="text-gray-400 font-normal border-b border-gray-300" 
+                  style={{ width: '48px' }}
+                ></th>
                 <th className="text-gray-400 font-normal w-3 border-b border-gray-300" ></th>
                 {headerGroup.headers.map((header) => (
                   <th
@@ -534,18 +749,44 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const row = tableInstance.getRowModel().rows[virtualRow.index];
               return (
+                // <tr 
+                //   key={row?.id}
+                //   style={{
+                //     height: `${virtualRow.size}px`,
+                //     transform: `translateY(${
+                //       virtualRow.start - virtualRow.index * virtualRow.size
+                //     }px)`,
+                //   }}
+                // >
                 <tr 
                   key={row?.id}
                   style={{
+                    position: 'absolute',
                     height: `${virtualRow.size}px`,
-                    transform: `translateY(${
-                      virtualRow.start - virtualRow.index * virtualRow.size
-                    }px)`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    width: '100%',
+                              // display: 'table', // Force table display
+          // tableLayout: 'fixed', // Fixed table layout
+              top: 0,
+                    left: 0,
                   }}
                 >
-                  <td className="px-4 py-2 border-t border-b border-gray-300 text-gray-500">{virtualRow.index + 1}</td> 
+                  <td 
+                    className="px-4 py-2 border-t border-b border-gray-300 text-gray-500"
+                    style={{ 
+                      width: '60px', 
+                      verticalAlign: 'middle'
+                    }}
+                  >
+                    {virtualRow.index + 1}
+                  </td> 
                   {row?.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-2 border-t border-b border-r border-gray-300">
+                    <td key={cell.id} className="m-1 px-4 py-2 border-t border-b border-r border-gray-300" 
+                    style={{
+                      height: '36px', // Fixed height
+                      width: `${cell.column.getSize()}px`,
+                    }}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -554,6 +795,9 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
               )
             })}
 
+          </tbody>
+          
+          <tfoot>
             <tr>
               <td
               colSpan={1 + tableInstance.getVisibleLeafColumns().length}
@@ -567,7 +811,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
                 </button>
               </td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
     </div>

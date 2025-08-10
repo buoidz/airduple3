@@ -1,7 +1,7 @@
 import { ColumnType } from "@prisma/client";
 import { z } from "zod";
 
-import { createTRPCRouter, privateProcedure, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, privateProcedure } from "~/server/api/trpc";
 
 export const workspaceRouter = createTRPCRouter({
   create: privateProcedure
@@ -32,7 +32,7 @@ export const workspaceRouter = createTRPCRouter({
    return workspace?.name;
  }),
 
-  getTablesInWorkspace: publicProcedure
+  getTablesInWorkspace: privateProcedure
   .input(z.object({ workspaceId: z.string() }))
   .query(async ({ ctx, input }) => {
     const tables = await ctx.db.table.findMany({
@@ -51,6 +51,9 @@ export const workspaceRouter = createTRPCRouter({
   getAll: privateProcedure
     .query(async ({ ctx }) => {
       const workspaces = await ctx.db.workspace.findMany({
+        where: {
+          ownerId: ctx.currentUser.id,
+        },
         orderBy: { createdAt: "desc" },
         include: {
           tables: true,

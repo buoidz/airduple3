@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { faker } from '@faker-js/faker';
 
-import { createTRPCRouter, privateProcedure, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, privateProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
 
 const filterSchema = z.object({
@@ -18,256 +18,298 @@ const sortSchema = z.object({
 });
 
 
-  export const tableRouter = createTRPCRouter({
-    getById: privateProcedure
-      .input(
-        z.object({ tableId: z.string() })
-      )     
-      .query(async ({ ctx, input }) => {
-        const table = await ctx.db.table.findUnique({
-          where: { id: input.tableId },
-          include: {
-            columns: {
-              orderBy: {
-                order: 'asc',
-              }
-            },
-          },
-        });
-
-        if (!table) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Table not found',
-          });
-        }
-
-        return table;
-      }),
-
-    addColumn: privateProcedure
-      .input(z.object({
-        tableId: z.string(),
-        name: z.string().min(1),
-        type: z.enum(["TEXT", "NUMBER"]) // matches enum in Prisma
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const { tableId, name, type } = input;
-
-        return await ctx.db.$transaction(async (tx) => {
-          // Get the current max order
-          const lastColumn = await tx.column.findFirst({
-            where: { tableId },
-            orderBy: { order: "desc" }
-          });
-
-          const newOrder = lastColumn ? lastColumn.order + 1 : 0;
-
-          const newColumn = await tx.column.create({
-            data: {
-              tableId,
-              name,
-              type,
-              order: newOrder
+export const tableRouter = createTRPCRouter({
+  getById: privateProcedure
+    .input(
+      z.object({ tableId: z.string() })
+    )     
+    .query(async ({ ctx, input }) => {
+      const table = await ctx.db.table.findUnique({
+        where: { id: input.tableId },
+        include: {
+          columns: {
+            orderBy: {
+              order: 'asc',
             }
-          });
-
-          const rows = await tx.row.findMany({
-            where: { tableId },
-            select: { id: true }
-          });
-
-          if (rows.length > 0) {
-            await tx.cell.createMany({
-              data: rows.map(row => ({
-                rowId: row.id,
-                columnId: newColumn.id,
-                textValue: type === "TEXT" ? null : undefined,
-                numberValue: type === "NUMBER" ? null : undefined,
-              }))
-            });
-          }
-
-          return newColumn;
-        });
-      }),
-
-    updateCell: privateProcedure
-      .input(z.object({
-        tableId: z.string(),
-        rowIndex: z.number(),
-        columnId: z.string(),
-        value: z.string()
-      }))
-      .mutation(async({ ctx, input }) => {
-        const row = await ctx.db.row.findFirst({
-          where: { 
-            tableId: input.tableId,
-            order: input.rowIndex
           },
-          include: { cells: true },
+        },
+      });
+
+      if (!table) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Table not found',
         });
+      }
 
-        if (!row) throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Row not found"
-        });
+      return table;
+    }),
 
-        const column = await ctx.db.column.findUnique({
-          where: { id: input.columnId },
-          select: { type: true }, // Assuming Column model has a type field
-        });
+  // addColumn: privateProcedure
+  //   .input(z.object({
+  //     tableId: z.string(),
+  //     name: z.string().min(1),
+  //     type: z.enum(["TEXT", "NUMBER"]) // matches enum in Prisma
+  //   }))
+  //   .mutation(async ({ ctx, input }) => {
+  //     const { tableId, name, type } = input;
 
-        if (!column) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Column not found",
-          });
-        }
+  //     return await ctx.db.$transaction(async (tx) => {
+  //       // Get the current max order
+  //       const lastColumn = await tx.column.findFirst({
+  //         where: { tableId },
+  //         orderBy: { order: "desc" }
+  //       });
 
-        const cell = row.cells.find(c => c.columnId === input.columnId);
-        if (!cell) throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Cell not found"
-        });
+  //       const newOrder = lastColumn ? lastColumn.order + 1 : 0;
 
-        const isNumberColumn = column.type === "NUMBER"; 
-        let cellData: Prisma.CellUpdateInput;
+  //       const newColumn = await tx.column.create({
+  //         data: {
+  //           tableId,
+  //           name,
+  //           type,
+  //           order: newOrder
+  //         }
+  //       });
 
+  //       const rows = await tx.row.findMany({
+  //         where: { tableId },
+  //         select: { id: true }
+  //       });
 
-        if (isNumberColumn) {
-          // Validate that the value is a valid number
-          const parsedValue = parseFloat(input.value);
-          if (input.value !== "" && isNaN(parsedValue)) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Invalid number format for numeric column",
-            });
-          }
-          cellData = {
-            textValue: null,
-            numberValue: input.value === "" ? null : parsedValue,
-          };
-        } else {
-          cellData = {
-            textValue: input.value,
-            numberValue: null,
-          };
-        }
+  //       if (rows.length > 0) {
+  //         await tx.cell.createMany({
+  //           data: rows.map(row => ({
+  //             rowId: row.id,
+  //             columnId: newColumn.id,
+  //             textValue: type === "TEXT" ? null : undefined,
+  //             numberValue: type === "NUMBER" ? null : undefined,
+  //           }))
+  //         });
+  //       }
 
+  //       return newColumn;
+  //     });
+  //   }),
 
-        await ctx.db.cell.update({
-          where: { id: cell.id },
-          data: {           
-            textValue: cellData.textValue,
-            numberValue: cellData.numberValue, 
-          },
-        })
-      }),
+  addColumn: privateProcedure
+  .input(
+    z.object({
+      tableId: z.string(),
+      name: z.string().min(1),
+      type: z.enum(["TEXT", "NUMBER"]),
+    })
+  )
+  .mutation(async ({ ctx, input }) => {
+    const { tableId, name, type } = input;
 
-    addFakeRows: privateProcedure
-      .input(
-        z.object({
-          tableId: z.string(),
-          rowCount: z.number().min(1).max(50000), // Limit to prevent abuse
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const { tableId, rowCount } = input;
+    return ctx.db.$transaction(async (tx) => {
+      const lastColumn = await tx.column.findFirst({
+        where: { tableId },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
 
-        // Fetch columns to know the structure
-        const columns = await ctx.db.column.findMany({
-          where: { tableId },
-          orderBy: { order: 'asc' },
-        });
+      const newOrder = lastColumn ? lastColumn.order + 1 : 0;
 
-        // Get the maximum order for the table
-        const maxOrder = await ctx.db.row.aggregate({
-          where: { tableId },
-          _max: { order: true },
-        });
-        const startOrder = (maxOrder._max.order ?? 0) + 1;
-
-        // Generate fake rows with order
-        const rowsData = Array.from({ length: rowCount }, (_, i) => ({
-          id: faker.string.uuid(),
+      const newColumn = await tx.column.create({
+        data: {
           tableId,
-          order: startOrder + i, 
-          cells: {
-            create: columns.map((col) => ({
-              columnId: col.id,
-              textValue: col.type === 'TEXT' ? faker.lorem.words({ min: 1, max: 3 }) : undefined,
-              numberValue: col.type === 'NUMBER' ? faker.number.int({ min: 1, max: 100 }) : undefined,
-            })),
-          },
-        }));
+          name,
+          type,
+          order: newOrder,
+        },
+      });
 
-        // Create rows in batches
-        const batchSize = 1000;
-        const createdRows = [];
-        for (let i = 0; i < rowsData.length; i += batchSize) {
-          const batch = rowsData.slice(i, i + batchSize);
-          await ctx.db.row.createMany({
-            data: batch.map((row) => ({ id: row.id, tableId, order: row.order })),
-            skipDuplicates: true,
+      await tx.$executeRaw`
+        INSERT INTO "Cell" ("id", "rowId", "columnId", "textValue", "numberValue")
+        SELECT uuid_generate_v4(), r.id, ${newColumn.id}, 
+               ${type === "TEXT" ? null : undefined}::text,
+               ${type === "NUMBER" ? null : undefined}::double precision
+        FROM "Row" r
+        WHERE r."tableId" = ${tableId};
+      `;
+
+      return newColumn;
+    });
+  }),
+
+  updateCell: privateProcedure
+    .input(z.object({
+      tableId: z.string(),
+      rowIndex: z.number(),
+      columnId: z.string(),
+      value: z.string()
+    }))
+    .mutation(async({ ctx, input }) => {
+      const row = await ctx.db.row.findFirst({
+        where: { 
+          tableId: input.tableId,
+          order: input.rowIndex
+        },
+        include: { cells: true },
+      });
+
+      if (!row) throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Row not found"
+      });
+
+      const column = await ctx.db.column.findUnique({
+        where: { id: input.columnId },
+        select: { type: true }, // Assuming Column model has a type field
+      });
+
+      if (!column) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Column not found",
+        });
+      }
+
+      const cell = row.cells.find(c => c.columnId === input.columnId);
+      if (!cell) throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Cell not found"
+      });
+
+      const isNumberColumn = column.type === "NUMBER"; 
+      let cellData: Prisma.CellUpdateInput;
+
+
+      if (isNumberColumn) {
+        // Validate that the value is a valid number
+        const parsedValue = parseFloat(input.value);
+        if (input.value !== "" && isNaN(parsedValue)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid number format for numeric column",
           });
-          // Create cells for the batch
-          const allCellsInBatch = batch.flatMap((row) =>
-            row.cells.create.map((cell) => ({
-              ...cell,
-              rowId: row.id,
-            }))
-          );
-
-          await ctx.db.cell.createMany({
-            data: allCellsInBatch,
-            skipDuplicates: true,
-          });
-
-          createdRows.push(...batch);
         }
+        cellData = {
+          textValue: null,
+          numberValue: input.value === "" ? null : parsedValue,
+        };
+      } else {
+        cellData = {
+          textValue: input.value,
+          numberValue: null,
+        };
+      }
 
-        return { count: createdRows.length };
-      }),
 
-      addRow: privateProcedure
-      .input(
-        z.object({ tableId: z.string() })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const { tableId } = input;
+      await ctx.db.cell.update({
+        where: { id: cell.id },
+        data: {           
+          textValue: cellData.textValue,
+          numberValue: cellData.numberValue, 
+        },
+      })
+    }),
 
-        // Fetch columns to know the structure
-        const columns = await ctx.db.column.findMany({
-          where: { tableId },
-          orderBy: { order: 'asc' },
-        });
+  addFakeRows: privateProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        rowCount: z.number().min(1).max(50000), // Limit to prevent abuse
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { tableId, rowCount } = input;
 
-        // Get the maximum order for the table
-        const maxOrder = await ctx.db.row.aggregate({
-          where: { tableId },
-          _max: { order: true },
-        });
-        const newOrder = (maxOrder._max.order ?? 0) + 1;
+      // Fetch columns to know the structure
+      const columns = await ctx.db.column.findMany({
+        where: { tableId },
+        orderBy: { order: 'asc' },
+      });
 
-        // Create row
-        const newRow = await ctx.db.row.create({
-          data: { tableId, order: newOrder },
-        });
+      // Get the maximum order for the table
+      const maxOrder = await ctx.db.row.aggregate({
+        where: { tableId },
+        _max: { order: true },
+      });
+      const startOrder = (maxOrder._max.order ?? 0) + 1;
 
-        // Create cells in bulk
-        await ctx.db.cell.createMany({
-          data: columns.map((col) => ({
-            rowId: newRow.id,
+      // Generate fake rows with order
+      const rowsData = Array.from({ length: rowCount }, (_, i) => ({
+        id: faker.string.uuid(),
+        tableId,
+        order: startOrder + i, 
+        cells: {
+          create: columns.map((col) => ({
             columnId: col.id,
-            textValue: col.type === "TEXT" ? null : undefined,
-            numberValue: col.type === "NUMBER" ? null : undefined,
+            textValue: col.type === 'TEXT' ? faker.lorem.words({ min: 1, max: 3 }) : undefined,
+            numberValue: col.type === 'NUMBER' ? faker.number.int({ min: 1, max: 100 }) : undefined,
           })),
+        },
+      }));
+
+      // Create rows in batches
+      const batchSize = 1000;
+      const createdRows = [];
+      for (let i = 0; i < rowsData.length; i += batchSize) {
+        const batch = rowsData.slice(i, i + batchSize);
+        await ctx.db.row.createMany({
+          data: batch.map((row) => ({ id: row.id, tableId, order: row.order })),
+          skipDuplicates: true,
+        });
+        // Create cells for the batch
+        const allCellsInBatch = batch.flatMap((row) =>
+          row.cells.create.map((cell) => ({
+            ...cell,
+            rowId: row.id,
+          }))
+        );
+
+        await ctx.db.cell.createMany({
+          data: allCellsInBatch,
+          skipDuplicates: true,
         });
 
-        return { id: newRow.id };
+        createdRows.push(...batch);
+      }
 
-      }),
+      return { count: createdRows.length };
+    }),
+
+  addRow: privateProcedure
+    .input(
+      z.object({ tableId: z.string() })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { tableId } = input;
+
+      // Fetch columns to know the structure
+      const columns = await ctx.db.column.findMany({
+        where: { tableId },
+        orderBy: { order: 'asc' },
+      });
+
+      // Get the maximum order for the table
+      const maxOrder = await ctx.db.row.aggregate({
+        where: { tableId },
+        _max: { order: true },
+      });
+      const newOrder = (maxOrder._max.order ?? 0) + 1;
+
+      // Create row
+      const newRow = await ctx.db.row.create({
+        data: { tableId, order: newOrder },
+      });
+
+      // Create cells in bulk
+      await ctx.db.cell.createMany({
+        data: columns.map((col) => ({
+          rowId: newRow.id,
+          columnId: col.id,
+          textValue: col.type === "TEXT" ? null : undefined,
+          numberValue: col.type === "NUMBER" ? null : undefined,
+        })),
+      });
+
+      return { id: newRow.id };
+
+    }),
 
   getRows: privateProcedure
     .input(
@@ -325,7 +367,7 @@ const sortSchema = z.object({
       };
     }),
 
-  getRowsWithOperations: publicProcedure
+  getRowsWithOperations: privateProcedure
     .input(z.object({
       tableId: z.string(),
       limit: z.number().min(1).max(1000).default(100),
