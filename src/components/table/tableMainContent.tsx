@@ -456,7 +456,7 @@ export function TableMainContent({ onChangeLoadingState }: { onChangeLoadingStat
       !isFetchingNextPage &&
       allRows.length > 0
     ) {
-      fetchNextPage();
+      void fetchNextPage();
     }
   }, [rowVirtualizer.getVirtualItems(), allRows.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
