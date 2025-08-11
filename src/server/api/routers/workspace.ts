@@ -59,7 +59,7 @@ export const workspaceRouter = createTRPCRouter({
           tables: true,
         },
       });
-      console.log("Fetched workspaces:", workspaces); // add this
+      console.log("Fetched workspaces:", workspaces);
 
       return workspaces;
     }),

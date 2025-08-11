@@ -45,53 +45,6 @@ export const tableRouter = createTRPCRouter({
       return table;
     }),
 
-  // addColumn: privateProcedure
-  //   .input(z.object({
-  //     tableId: z.string(),
-  //     name: z.string().min(1),
-  //     type: z.enum(["TEXT", "NUMBER"]) // matches enum in Prisma
-  //   }))
-  //   .mutation(async ({ ctx, input }) => {
-  //     const { tableId, name, type } = input;
-
-  //     return await ctx.db.$transaction(async (tx) => {
-  //       // Get the current max order
-  //       const lastColumn = await tx.column.findFirst({
-  //         where: { tableId },
-  //         orderBy: { order: "desc" }
-  //       });
-
-  //       const newOrder = lastColumn ? lastColumn.order + 1 : 0;
-
-  //       const newColumn = await tx.column.create({
-  //         data: {
-  //           tableId,
-  //           name,
-  //           type,
-  //           order: newOrder
-  //         }
-  //       });
-
-  //       const rows = await tx.row.findMany({
-  //         where: { tableId },
-  //         select: { id: true }
-  //       });
-
-  //       if (rows.length > 0) {
-  //         await tx.cell.createMany({
-  //           data: rows.map(row => ({
-  //             rowId: row.id,
-  //             columnId: newColumn.id,
-  //             textValue: type === "TEXT" ? null : undefined,
-  //             numberValue: type === "NUMBER" ? null : undefined,
-  //           }))
-  //         });
-  //       }
-
-  //       return newColumn;
-  //     });
-  //   }),
-
   addColumn: privateProcedure
   .input(
     z.object({
@@ -157,7 +110,7 @@ export const tableRouter = createTRPCRouter({
 
       const column = await ctx.db.column.findUnique({
         where: { id: input.columnId },
-        select: { type: true }, // Assuming Column model has a type field
+        select: { type: true },
       });
 
       if (!column) {
@@ -178,7 +131,6 @@ export const tableRouter = createTRPCRouter({
 
 
       if (isNumberColumn) {
-        // Validate that the value is a valid number
         const parsedValue = parseFloat(input.value);
         if (input.value !== "" && isNaN(parsedValue)) {
           throw new TRPCError({
@@ -211,19 +163,17 @@ export const tableRouter = createTRPCRouter({
     .input(
       z.object({
         tableId: z.string(),
-        rowCount: z.number().min(1).max(50000), // Limit to prevent abuse
+        rowCount: z.number().min(1).max(50000),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { tableId, rowCount } = input;
 
-      // Fetch columns to know the structure
       const columns = await ctx.db.column.findMany({
         where: { tableId },
         orderBy: { order: 'asc' },
       });
 
-      // Get the maximum order for the table
       const maxOrder = await ctx.db.row.aggregate({
         where: { tableId },
         _max: { order: true },
@@ -253,7 +203,6 @@ export const tableRouter = createTRPCRouter({
           data: batch.map((row) => ({ id: row.id, tableId, order: row.order })),
           skipDuplicates: true,
         });
-        // Create cells for the batch
         const allCellsInBatch = batch.flatMap((row) =>
           row.cells.create.map((cell) => ({
             ...cell,
@@ -279,20 +228,17 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { tableId } = input;
 
-      // Fetch columns to know the structure
       const columns = await ctx.db.column.findMany({
         where: { tableId },
         orderBy: { order: 'asc' },
       });
 
-      // Get the maximum order for the table
       const maxOrder = await ctx.db.row.aggregate({
         where: { tableId },
         _max: { order: true },
       });
       const newOrder = (maxOrder._max.order ?? 0) + 1;
 
-      // Create row
       const newRow = await ctx.db.row.create({
         data: { tableId, order: newOrder },
       });
@@ -315,14 +261,13 @@ export const tableRouter = createTRPCRouter({
     .input(
       z.object({
         tableId: z.string(),
-        limit: z.number().min(1).max(1000).default(1000), // Cap at 1000 rows per page
-        cursor: z.string().optional(), // Cursor for pagination (row ID)
+        limit: z.number().min(1).max(1000).default(1000), 
+        cursor: z.string().optional(), 
       })
     )
     .query(async ({ ctx, input }) => {
       const { tableId, limit, cursor } = input;
 
-      // Ensure user has access db the table (via workspace or direct ownership)
       const table = await ctx.db.table.findFirst({
         where: {
           id: tableId,
@@ -340,10 +285,10 @@ export const tableRouter = createTRPCRouter({
       // Fetch rows with pagination
       const rows = await ctx.db.row.findMany({
         where: { tableId },
-        take: limit + 1, // Fetch one extra row to determine if there's a next page
-        skip: cursor ? 1 : 0, // Skip the cursor row if provided
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
         cursor: cursor ? { id: cursor } : undefined,
-        orderBy: { order: 'asc' }, // Use the `order` field for consistent pagination
+        orderBy: { order: 'asc' },
         include: {
           cells: {
             select: {
@@ -437,86 +382,6 @@ export const tableRouter = createTRPCRouter({
         }
       }
 
-      // // Add filter conditions
-      // for (const filter of filters) {
-      //   const column = table.columns.find(c => c.id === filter.columnId);
-      //   if (!column) continue;
-
-      //   const filterCondition: Prisma.RowWhereInput = {
-      //     cells: {
-      //       some: {
-      //         columnId: filter.columnId,
-      //       }
-      //     }
-      //   };
-
-      //   if (column.type === 'TEXT') {
-      //     switch (filter.type) {
-      //       case 'equals':
-      //         (filterCondition.cells as any).some.textValue = {
-      //           equals: filter.value,
-      //           mode: 'insensitive'
-      //         };
-      //         break;
-      //       case 'notEquals':
-      //         (filterCondition.cells as any).some.textValue = {
-      //           not: {
-      //             equals: filter.value,
-      //             mode: 'insensitive'
-      //           }
-      //         };
-      //         break;
-      //       case 'contains':
-      //         (filterCondition.cells as any).some.textValue = {
-      //           contains: filter.value,
-      //           mode: 'insensitive'
-      //         };
-      //         break;
-      //       case 'notContains':
-      //         whereConditions.push({
-      //           NOT: {
-      //             cells: {
-      //               some: {
-      //                 columnId: filter.columnId,
-      //                 textValue: {
-      //                   contains: filter.value,
-      //                   mode: 'insensitive'
-      //                 }
-      //               }
-      //             }
-      //           }
-      //         });
-      //         continue; // Skip adding the regular condition
-      //     }
-      //   } else if (column.type === 'NUMBER') {
-      //     const numValue = Number(filter.value);
-      //     if (isNaN(numValue)) continue;
-
-      //     switch (filter.type) {
-      //       case 'equals':
-      //         (filterCondition.cells as any).some.numberValue = numValue;
-      //         break;
-      //       case 'notEquals':
-      //         (filterCondition.cells as any).some.numberValue = {
-      //           not: numValue
-      //         };
-      //         break;
-      //       case 'greaterThan':
-      //         (filterCondition.cells as any).some.numberValue = {
-      //           gt: numValue
-      //         };
-      //         break;
-      //       case 'lessThan':
-      //         (filterCondition.cells as any).some.numberValue = {
-      //           lt: numValue
-      //         };
-      //         break;
-      //     }
-      //   }
-
-      //   whereConditions.push(filterCondition);
-      // }
-
       for (const filter of filters) {
         const column = table.columns.find((c) => c.id === filter.columnId);
         if (!column) continue;
@@ -594,12 +459,7 @@ export const tableRouter = createTRPCRouter({
       let orderBy: Prisma.RowOrderByWithRelationInput[] = [];
       
       if (sort.length > 0) {
-        // For complex sorting by cell values, we need to use a different approach
-        // Since Prisma doesn't support ordering by related fields directly in this case,
-        // we'll fetch all matching rows and sort them in memory for now
-        // For better performance with large datasets, consider using raw SQL
-        
-        orderBy = [{ order: 'asc' }]; // Default fallback to row order
+        orderBy = [{ order: 'asc' }];
       } else {
         orderBy = [{ order: 'asc' }];
       }
@@ -610,7 +470,7 @@ export const tableRouter = createTRPCRouter({
         include: {
           cells: {
             include: {
-              column: true // Include column info for sorting
+              column: true
             }
           }
         },
@@ -629,7 +489,6 @@ export const tableRouter = createTRPCRouter({
         cells: (Cell & { column: Column })[]
       })[];
 
-      // Apply sorting in memory if needed (for complex multi-column sorts)
       if (sort.length > 0) {
         rows.sort((a, b) => {
           for (const sortConfig of sort) {
@@ -665,14 +524,12 @@ export const tableRouter = createTRPCRouter({
         });
       }
 
-      // Handle pagination cursor
       let nextCursor: string | undefined = undefined;
       if (rows.length > limit) {
         const nextItem = rows.pop();
         nextCursor = nextItem!.id;
       }
 
-      // Clean up the response to match your existing format
       const cleanRows = rows.map(row => ({
         ...row,
         cells: row.cells.map(cell => ({
